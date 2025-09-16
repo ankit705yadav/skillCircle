@@ -11,27 +11,43 @@ export default function CreateOfferForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const token = await getToken();
-
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/skills`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+    try {
+      const token = await getToken();
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/skills`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ title, description, type: "OFFER" }),
         },
-        body: JSON.stringify({ title, description, type: "OFFER" }),
-      },
-    );
+      );
 
-    if (response.ok) {
+      if (!response.ok) {
+        // Try to decode error response from the server
+        let errorMsg = "Failed to create offer.";
+        try {
+          const errorData = await response.json();
+          if (errorData && errorData.message) {
+            errorMsg = `Error: ${errorData.message}`;
+          }
+        } catch (err) {
+          // Could not parse JSON, keep generic error
+        }
+        alert(errorMsg);
+        return;
+      }
+
       alert("Offer created successfully!");
-      // Optionally, clear form or redirect
       setTitle("");
       setDescription("");
-    } else {
-      alert("Failed to create offer.");
+    } catch (error: any) {
+      // Network errors or unexpected errors
+      alert(
+        `Network error, please try again later. Details: ${error?.message || error}`,
+      );
     }
   };
 

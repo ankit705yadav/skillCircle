@@ -1,5 +1,5 @@
 import { SignedIn, SignedOut, UserButton, SignInButton } from "@clerk/nextjs";
-import { Button } from "@mui/material";
+// import { Button } from "@mui/material";
 
 export default function Header() {
   return (
@@ -14,7 +14,7 @@ export default function Header() {
       <div>
         <SignedOut>
           <SignInButton mode="modal">
-            <Button variant="contained">Sign In</Button>
+            <button>Sign In</button>
           </SignInButton>
         </SignedOut>
         <SignedIn>

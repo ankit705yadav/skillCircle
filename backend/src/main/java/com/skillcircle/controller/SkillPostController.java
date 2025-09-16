@@ -1,27 +1,75 @@
 package com.skillcircle.controller;
 
 import com.skillcircle.Entity.SkillPost;
+import com.skillcircle.dto.CreateSkillPostRequest;
+import com.skillcircle.dto.AuthorResponse;
+import com.skillcircle.dto.SkillPostResponse;
 import com.skillcircle.repository.SkillPostRepository;
+import com.skillcircle.service.SkillPostService;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
+import java.util.stream.Collectors;
+
 
 @RestController
 @RequestMapping("/api/skills")
 public class SkillPostController {
 
-    private final SkillPostRepository skillPostRepository;
+    // Inject the Service instead of the Repository directly
+    private final SkillPostService skillPostService;
+    private final SkillPostRepository skillPostRepository; // Still needed for the GET method
 
-    public SkillPostController(SkillPostRepository skillPostRepository) {
+    public SkillPostController(SkillPostService skillPostService, SkillPostRepository skillPostRepository) {
+        this.skillPostService = skillPostService;
         this.skillPostRepository = skillPostRepository;
     }
 
     @GetMapping("/nearby")
-    public List<SkillPost> getNearbySkills(
+    public List<SkillPostResponse> getNearbySkills(
             @RequestParam double lat,
             @RequestParam double lon,
             @RequestParam(defaultValue = "10000") int radius) {
-        return skillPostRepository.findPostsNearby(lat, lon, radius);
+
+        List<SkillPost> skillPosts = skillPostRepository.findPostsNearby(lat, lon, radius);
+
+        // This mapping step is the crucial fix
+        return skillPosts.stream()
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
     }
 
-    // We'll add a POST method for creating skills later.
+    private SkillPostResponse convertToDto(SkillPost post) {
+        AuthorResponse authorDto = new AuthorResponse(post.getAuthor().getGeneratedUsername());
+
+        return new SkillPostResponse(
+                post.getId(),
+                post.getTitle(),
+                post.getDescription(),
+                post.getType().name(),
+                authorDto
+        );
+    }
+
+    /**
+     * Creates a new Skill Post (Offer or Ask).
+     * This method requires an authenticated user.
+     */
+    @PostMapping
+    public ResponseEntity<SkillPost> createSkill(
+            @RequestBody CreateSkillPostRequest request,
+            @AuthenticationPrincipal Jwt jwt) {
+
+        // Get the authenticated user's ID from the JWT token
+        String clerkUserId = jwt.getSubject();
+
+        // Delegate the creation logic to the service
+        SkillPost createdPost = skillPostService.createSkillPost(request, clerkUserId);
+
+        // Return a 201 Created status with the new post in the body
+        return new ResponseEntity<>(createdPost, HttpStatus.CREATED);
+    }
 }

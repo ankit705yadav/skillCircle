@@ -21,7 +21,7 @@ export default function CreateOfferForm() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ title, description, type: "OFFER" }),
+          body: JSON.stringify({ title, description, type: "ASK" }),
         },
       );
 
@@ -93,7 +93,7 @@ export default function CreateOfferForm() {
         required
       />
       <Button type="submit" variant="contained" sx={{ mt: 2 }}>
-        Post Offer
+        Post Ask
       </Button>
     </Box>
   );

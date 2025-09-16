@@ -1,4 +1,5 @@
 import CreateOfferForm from "./components/CreateOfferForm";
+import CreateAskForm from "./components/CreateAskForm";
 import NearbySkills from "./components/NearbySkills";
 
 export default function Home() {
@@ -6,6 +7,7 @@ export default function Home() {
     <div>
       <NearbySkills />
       <CreateOfferForm />
+      <CreateAskForm />
     </div>
   );
 }

@@ -32,11 +32,10 @@ public class SkillPostController {
     public List<SkillPostResponse> getNearbySkills(
             @RequestParam double lat,
             @RequestParam double lon,
-            @RequestParam(defaultValue = "10000") int radius) {
+            @RequestParam(defaultValue = "10000") int radius) {  // 10km default
 
         List<SkillPost> skillPosts = skillPostRepository.findPostsNearby(lat, lon, radius);
 
-        // This mapping step is the crucial fix
         return skillPosts.stream()
                 .map(this::convertToDto)
                 .collect(Collectors.toList());

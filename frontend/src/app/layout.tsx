@@ -11,7 +11,7 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en">
-        <body>
+        <body style={{ marginRight: "15%", marginLeft: "15%" }}>
           <Header />
           <UserLocationSync />
           <main>{children}</main>

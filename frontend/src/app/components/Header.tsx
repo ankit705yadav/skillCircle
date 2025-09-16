@@ -8,9 +8,14 @@ export default function Header() {
         display: "flex",
         justifyContent: "space-between",
         padding: "1rem",
+        border: "1px solid #ccc",
+        borderRadius: "10px",
+        boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+        backgroundColor: "#fff",
+        marginBottom: "1rem",
       }}
     >
-      <h1>SkillShare</h1>
+      <h1>Skill-Circle</h1>
       <div>
         <SignedOut>
           <SignInButton mode="modal">

@@ -42,7 +42,10 @@ public class SkillPostController {
     }
 
     private SkillPostResponse convertToDto(SkillPost post) {
-        AuthorResponse authorDto = new AuthorResponse(post.getAuthor().getGeneratedUsername());
+        AuthorResponse authorDto = new AuthorResponse(
+                post.getAuthor().getClerkUserId(),
+                post.getAuthor().getGeneratedUsername()
+        );
 
         return new SkillPostResponse(
                 post.getId(),

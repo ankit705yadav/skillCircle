@@ -8,6 +8,8 @@ import {
   CardContent,
   Typography,
   CircularProgress,
+  CardActions,
+  Button,
 } from "@mui/material";
 
 interface Skill {
@@ -22,7 +24,8 @@ interface Skill {
 
 export default function NearbySkills() {
   const { getToken } = useAuth();
-  const { isLoaded, isSignedIn } = useUser();
+  const { user, isLoaded, isSignedIn } = useUser();
+  console.log(">>>>", user);
   const [skills, setSkills] = useState<Skill[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -67,6 +70,34 @@ export default function NearbySkills() {
 
     fetchSkills();
   }, [isLoaded, isSignedIn, getToken]);
+
+  const handleRequestConnection = async (skillId: number) => {
+    const token = await getToken();
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/connections`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ skillPostId: skillId }),
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to send request.");
+      }
+
+      alert("Request sent successfully!");
+      // Optionally, you could disable the button after a successful request
+    } catch (error) {
+      console.error("Connection request failed:", error);
+      alert(error.message);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -129,6 +160,18 @@ export default function NearbySkills() {
                   <Typography>{skill.description}</Typography>
                   <Typography variant="caption">{skill?.type}</Typography>
                 </CardContent>
+                {/* Conditional rendering for the button */}
+                {user?.id !== skill.author.clerkUserId && (
+                  <CardActions>
+                    <Button
+                      size="small"
+                      variant="contained"
+                      onClick={() => handleRequestConnection(skill.id)}
+                    >
+                      {skill.type === "OFFER" ? "Request Help" : "Offer Help"}
+                    </Button>
+                  </CardActions>
+                )}
               </Card>
             ))}
         </Box>
@@ -169,6 +212,18 @@ export default function NearbySkills() {
                   <Typography>{skill.description}</Typography>
                   <Typography variant="caption">{skill?.type}</Typography>
                 </CardContent>
+                {/* Conditional rendering for the button */}
+                {user?.id !== skill.author.clerkUserId && (
+                  <CardActions>
+                    <Button
+                      size="small"
+                      variant="contained"
+                      onClick={() => handleRequestConnection(skill.id)}
+                    >
+                      {skill.type === "OFFER" ? "Request Help" : "Offer Help"}
+                    </Button>
+                  </CardActions>
+                )}
               </Card>
             ))}
         </Box>

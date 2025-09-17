@@ -119,6 +119,13 @@ export default function NearbySkills() {
               >
                 <CardContent>
                   <Typography variant="h6">{skill.title}</Typography>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mb: 1.5 }}
+                  >
+                    by {skill.author.username}
+                  </Typography>
                   <Typography>{skill.description}</Typography>
                   <Typography variant="caption">{skill?.type}</Typography>
                 </CardContent>
@@ -152,6 +159,13 @@ export default function NearbySkills() {
               >
                 <CardContent>
                   <Typography variant="h6">{skill.title}</Typography>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mb: 1.5 }}
+                  >
+                    by {skill.author.username}
+                  </Typography>
                   <Typography>{skill.description}</Typography>
                   <Typography variant="caption">{skill?.type}</Typography>
                 </CardContent>

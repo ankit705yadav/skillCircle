@@ -73,7 +73,7 @@ export default function CreateOfferForm() {
         borderLeftStyle: "solid",
       }}
     >
-      <Typography variant="h5">Share a Skill</Typography>
+      <Typography variant="h5">Request a Skill</Typography>
       <TextField
         fullWidth
         label="Skill Title"

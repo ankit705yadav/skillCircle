@@ -13,6 +13,7 @@ export default function Header() {
         boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
         backgroundColor: "#fff",
         marginBottom: "1rem",
+        marginTop: "1rem",
       }}
     >
       <h1>Skill-Circle</h1>

@@ -4,6 +4,20 @@ import jakarta.persistence.*;
 
 @Entity
 public class SkillPost {
+
+    // --- CONSTRUCTORS ---
+    // Default constructor needed by JPA
+    public SkillPost() {
+    }
+
+    // Parameterized constructor for easier instantiation
+    public SkillPost(UserAccount author, PostType type, String title, String description) {
+        this.author = author;
+        this.type = type;
+        this.title = title;
+        this.description = description;
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -18,33 +32,9 @@ public class SkillPost {
     private String title;
     private String description;
 
-    // --- CONSTRUCTORS ---
-
-    /**
-     * No-argument constructor required by JPA.
-     */
-    public SkillPost() {
-    }
-
-    /**
-     * Convenience constructor to create a new post with initial values.
-     */
-    public SkillPost(UserAccount author, PostType type, String title, String description) {
-        this.author = author;
-        this.type = type;
-        this.title = title;
-        this.description = description;
-    }
-
-
     // --- GETTERS AND SETTERS ---
-
     public Long getId() {
         return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
     }
 
     public UserAccount getAuthor() {

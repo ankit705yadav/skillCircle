@@ -53,10 +53,8 @@ public class SkillPostController {
         );
     }
 
-    /**
-     * Creates a new Skill Post (Offer or Ask).
-     * This method requires an authenticated user.
-     */
+
+    // Creates a new Skill Post (Offer or Ask).
     @PostMapping
     public ResponseEntity<SkillPost> createSkill(
             @RequestBody CreateSkillPostRequest request,

@@ -1,7 +1,6 @@
 "use client";
 
-import { useAuth, useUser } from "@clerk/nextjs";
-import { useEffect, useState } from "react";
+import { useAuth } from "@clerk/nextjs";
 import {
   Box,
   Card,
@@ -12,64 +11,8 @@ import {
   Button,
 } from "@mui/material";
 
-interface Skill {
-  id: number;
-  title: string;
-  description: string;
-  type: "OFFER" | "ASK";
-  author: {
-    username: string;
-  };
-}
-
-export default function NearbySkills() {
+export default function NearbySkills({ skills, isLoading, user }) {
   const { getToken } = useAuth();
-  const { user, isLoaded, isSignedIn } = useUser();
-  console.log(">>>>", user);
-  const [skills, setSkills] = useState<Skill[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    // The "Guard Clause": Do nothing if Clerk is not ready or the user is not signed in.
-    if (!isLoaded || !isSignedIn) {
-      return;
-    }
-
-    const fetchSkills = () => {
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          const { latitude, longitude } = position.coords;
-          const token = await getToken();
-
-          // Another guard: if for some reason token is null, don't fetch
-          if (!token) {
-            setIsLoading(false);
-            return;
-          }
-
-          const response = await fetch(
-            `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/skills/nearby?lat=${latitude}&lon=${longitude}`,
-            {
-              headers: { Authorization: `Bearer ${token}` },
-            },
-          );
-
-          if (response.ok) {
-            const data = await response.json();
-            console.log("KKR:", data);
-            setSkills(data);
-          }
-          setIsLoading(false); // Stop loading after fetch completes
-        },
-        (error) => {
-          console.error("Geolocation error:", error);
-          setIsLoading(false); // Stop loading on error
-        },
-      );
-    };
-
-    fetchSkills();
-  }, [isLoaded, isSignedIn, getToken]);
 
   const handleRequestConnection = async (skillId: number) => {
     const token = await getToken();

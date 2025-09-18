@@ -8,21 +8,33 @@ import com.skillcircle.repository.UserAccountRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
+
 @Service
 public class SkillPostService {
 
     private final SkillPostRepository skillPostRepository;
     private final UserAccountRepository userAccountRepository;
+    private final ModerationService moderationService;
 
-    public SkillPostService(SkillPostRepository skillPostRepository, UserAccountRepository userAccountRepository) {
+    public SkillPostService(SkillPostRepository skillPostRepository, UserAccountRepository userAccountRepository,ModerationService moderationService) {
         this.skillPostRepository = skillPostRepository;
         this.userAccountRepository = userAccountRepository;
+        this.moderationService = moderationService;
     }
 
     @Transactional
     public SkillPost createSkillPost(CreateSkillPostRequest request, String clerkUserId) {
-        // Here is where you would call an AI moderation service on request.title() and request.description()
-        // For now, we'll proceed directly.
+
+        // Content moderation
+        try {
+            if (moderationService.isContentInappropriate(request.title() + " " + request.description())) {
+                throw new IllegalArgumentException("Post contains inappropriate content and was rejected.");
+            }
+        } catch (IOException e) {
+            System.err.println("Could not moderate content. Allowing post for now. Error: " + e.getMessage());
+        }
+
 
         // 1. Find the author of the post from the database
         UserAccount author = userAccountRepository.findByClerkUserId(clerkUserId)

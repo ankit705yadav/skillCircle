@@ -12,6 +12,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 
@@ -41,6 +42,43 @@ public class SkillPostController {
                 .collect(Collectors.toList());
     }
 
+    // Creates a new Skill Post (Offer or Ask).
+//    @PostMapping
+//    public ResponseEntity<SkillPost> createSkill(
+//            @RequestBody CreateSkillPostRequest request,
+//            @AuthenticationPrincipal Jwt jwt) {
+//
+//        // Get the authenticated user's ID from the JWT token
+//        String clerkUserId = jwt.getSubject();
+//
+//        // Delegate the creation logic to the service
+//        SkillPost createdPost = skillPostService.createSkillPost(request, clerkUserId);
+//
+//        // Return a 201 Created status with the new post in the body
+//        return new ResponseEntity<>(createdPost, HttpStatus.CREATED);
+//    }
+    @PostMapping
+    public ResponseEntity<?> createSkill( // Changed the return type to ResponseEntity<?>
+                                          @RequestBody CreateSkillPostRequest request,
+                                          @AuthenticationPrincipal Jwt jwt) {
+        try {
+            String clerkUserId = jwt.getSubject();
+
+            // Delegate the creation logic to the service
+            SkillPost createdPost = skillPostService.createSkillPost(request, clerkUserId);
+
+            // Return a 201 Created status with the new post in the body
+            return new ResponseEntity<>(createdPost, HttpStatus.CREATED);
+
+            // ✅ CATCH THE EXCEPTION FROM THE MODERATION SERVICE
+        } catch (IllegalArgumentException e) {
+            // Create a simple map to hold the error message
+            Map<String, String> errorResponse = Map.of("error", e.getMessage());
+            // Return a 400 Bad Request status with the error message in the body
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+    }
+
     private SkillPostResponse convertToDto(SkillPost post) {
         AuthorResponse authorDto = new AuthorResponse(
                 post.getAuthor().getClerkUserId(),
@@ -54,22 +92,5 @@ public class SkillPostController {
                 post.getType().name(),
                 authorDto
         );
-    }
-
-
-    // Creates a new Skill Post (Offer or Ask).
-    @PostMapping
-    public ResponseEntity<SkillPost> createSkill(
-            @RequestBody CreateSkillPostRequest request,
-            @AuthenticationPrincipal Jwt jwt) {
-
-        // Get the authenticated user's ID from the JWT token
-        String clerkUserId = jwt.getSubject();
-
-        // Delegate the creation logic to the service
-        SkillPost createdPost = skillPostService.createSkillPost(request, clerkUserId);
-
-        // Return a 201 Created status with the new post in the body
-        return new ResponseEntity<>(createdPost, HttpStatus.CREATED);
     }
 }

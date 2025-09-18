@@ -22,7 +22,11 @@ export default function Header() {
         <Link href="/chats">Chats</Link>
       </div>
 
-      <h1>Skill-Circle</h1>
+      <Link href="/" legacyBehavior>
+        <a>
+          <h1>Skill-Circle</h1>
+        </a>
+      </Link>
       <div>
         <SignedOut>
           <SignInButton mode="modal">

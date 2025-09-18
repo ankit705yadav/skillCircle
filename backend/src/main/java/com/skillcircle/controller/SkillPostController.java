@@ -32,7 +32,7 @@ public class SkillPostController {
     public List<SkillPostResponse> getNearbySkills(
             @RequestParam double lat,
             @RequestParam double lon,
-            @RequestParam(defaultValue = "10000") int radius) {  // 10km default
+            @RequestParam(defaultValue = "1000000") int radius) {  // 10km default
 
         List<SkillPost> skillPosts = skillPostRepository.findPostsNearby(lat, lon, radius);
 

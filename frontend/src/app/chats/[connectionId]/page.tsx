@@ -29,7 +29,7 @@ export default function ChatPage() {
     };
 
     fetchMessages();
-    // In a real app, you would use polling or WebSockets to get new messages in real-time
+    // Implement WebSockets to get new messages in real-time
   }, [connectionId, getToken]);
 
   const handleSendMessage = async (e: React.FormEvent) => {

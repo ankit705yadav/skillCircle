@@ -14,7 +14,6 @@ import {
   Divider,
 } from "@mui/material";
 
-// Define TypeScript types for our data for better code quality
 interface Author {
   clerkUserId: string;
   username: string;

@@ -64,9 +64,7 @@ public class MessageController {
         return new ResponseEntity<>(savedMessage, HttpStatus.CREATED);
     }
 
-    /**
-     * Helper method to convert a Message entity to its DTO representation.
-     */
+    // Helper method to convert a Message entity to its DTO representation.
     private MessageResponseDTO convertToDto(Message message) {
         AuthorResponse senderDto = new AuthorResponse(
                 message.getSender().getClerkUserId(),

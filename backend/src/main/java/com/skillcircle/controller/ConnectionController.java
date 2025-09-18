@@ -26,15 +26,8 @@ public class ConnectionController {
         this.connectionService = connectionService;
     }
 
-//    @PostMapping
-//    public ResponseEntity<Connection> createConnection(@RequestBody Map<String, Long> payload, @AuthenticationPrincipal Jwt jwt) {
-//        Long skillPostId = payload.get("skillPostId");
-//        String requesterClerkId = jwt.getSubject();
-//        Connection newConnection = connectionService.createConnectionRequest(skillPostId, requesterClerkId);
-//        return new ResponseEntity<>(newConnection, HttpStatus.CREATED);
-//    }
-@PostMapping
-public ResponseEntity<ConnectionResponseDTO> createConnection(@RequestBody Map<String, Long> payload, @AuthenticationPrincipal Jwt jwt) {
+    @PostMapping
+    public ResponseEntity<ConnectionResponseDTO> createConnection(@RequestBody Map<String, Long> payload, @AuthenticationPrincipal Jwt jwt) {
     Long skillPostId = payload.get("skillPostId");
     String requesterClerkId = jwt.getSubject();
 
@@ -45,16 +38,10 @@ public ResponseEntity<ConnectionResponseDTO> createConnection(@RequestBody Map<S
     ConnectionResponseDTO response = convertToDto(newConnection);
 
     return new ResponseEntity<>(response, HttpStatus.CREATED);
-}
+    }
     
 
-    // Endpoint to get pending notifications for the logged-in user
-//    @GetMapping("/notifications")
-//    public ResponseEntity<List<Connection>> getNotifications(@AuthenticationPrincipal Jwt jwt) {
-//        String approverClerkId = jwt.getSubject();
-//        List<Connection> notifications = connectionService.getPendingNotifications(approverClerkId);
-//        return ResponseEntity.ok(notifications);
-//    }
+    // Endpoint to get all connection-requests
     @GetMapping("/notifications")
     public ResponseEntity<List<ConnectionResponseDTO>> getNotifications(@AuthenticationPrincipal Jwt jwt) {
         String approverClerkId = jwt.getSubject();
@@ -68,6 +55,7 @@ public ResponseEntity<ConnectionResponseDTO> createConnection(@RequestBody Map<S
         return ResponseEntity.ok(response);
     }
 
+    // End point to get all active connectins
     @GetMapping("/active")
     public ResponseEntity<List<ConnectionResponseDTO>> getActiveConnections(@AuthenticationPrincipal Jwt jwt) {
         String clerkUserId = jwt.getSubject();
@@ -81,6 +69,7 @@ public ResponseEntity<ConnectionResponseDTO> createConnection(@RequestBody Map<S
         return ResponseEntity.ok(response);
     }
 
+    // Endpoint to accept a connection
     @PostMapping("/{connectionId}/accept")
     public ResponseEntity<Connection> acceptConnection(@PathVariable Long connectionId, @AuthenticationPrincipal Jwt jwt) {
         String approverClerkId = jwt.getSubject();
@@ -96,9 +85,7 @@ public ResponseEntity<ConnectionResponseDTO> createConnection(@RequestBody Map<S
         return ResponseEntity.ok(rejectedConnection);
     }
 
-    /**
-     * Helper method to convert a Connection entity to its DTO representation.
-     */
+    // Helper method to convert a Connection entity to its DTO representation.
     private ConnectionResponseDTO convertToDto(Connection connection) {
         SkillPostResponse skillPostDto = convertToDto(connection.getSkillPost());
         AuthorResponse requesterDto = new AuthorResponse(
@@ -119,9 +106,8 @@ public ResponseEntity<ConnectionResponseDTO> createConnection(@RequestBody Map<S
         );
     }
 
-    /**
-     * Helper method to convert a SkillPost entity to its DTO.
-     */
+
+    // Helper method to convert a SkillPost entity to its DTO.
     private SkillPostResponse convertToDto(SkillPost post) {
         AuthorResponse authorDto = new AuthorResponse(
                 post.getAuthor().getClerkUserId(),

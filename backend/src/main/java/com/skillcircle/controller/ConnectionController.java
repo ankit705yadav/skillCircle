@@ -68,6 +68,19 @@ public ResponseEntity<ConnectionResponseDTO> createConnection(@RequestBody Map<S
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/active")
+    public ResponseEntity<List<ConnectionResponseDTO>> getActiveConnections(@AuthenticationPrincipal Jwt jwt) {
+        String clerkUserId = jwt.getSubject();
+        List<Connection> connections = connectionService.getActiveConnections(clerkUserId);
+
+        // Map the entities to DTOs for a clean response
+        List<ConnectionResponseDTO> response = connections.stream()
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(response);
+    }
+
     @PostMapping("/{connectionId}/accept")
     public ResponseEntity<Connection> acceptConnection(@PathVariable Long connectionId, @AuthenticationPrincipal Jwt jwt) {
         String approverClerkId = jwt.getSubject();
@@ -92,12 +105,17 @@ public ResponseEntity<ConnectionResponseDTO> createConnection(@RequestBody Map<S
                 connection.getRequester().getClerkUserId(),
                 connection.getRequester().getGeneratedUsername()
         );
+        AuthorResponse approverDto = new AuthorResponse(
+                connection.getApprover().getClerkUserId(),
+                connection.getApprover().getGeneratedUsername()
+        );
 
         return new ConnectionResponseDTO(
                 connection.getId(),
                 connection.getStatus().name(),
                 skillPostDto,
-                requesterDto
+                requesterDto,
+                approverDto
         );
     }
 

@@ -28,6 +28,10 @@ public class ConnectionService {
         this.userAccountRepository = userAccountRepository;
     }
 
+    public List<Connection> getActiveConnections(String clerkUserId) {
+        return connectionRepository.findActiveConnectionsForUser(clerkUserId, ConnectionStatus.ACCEPTED);
+    }
+
     @Transactional
     public Connection createConnectionRequest(Long skillPostId, String requesterClerkId) {
         SkillPost skillPost = skillPostRepository.findById(skillPostId)

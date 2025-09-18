@@ -1,4 +1,5 @@
 import { SignedIn, SignedOut, UserButton, SignInButton } from "@clerk/nextjs";
+import Link from "next/link";
 // import { Button } from "@mui/material";
 
 export default function Header() {
@@ -16,6 +17,11 @@ export default function Header() {
         marginTop: "1rem",
       }}
     >
+      <div style={{ position: "absolute", display: "flex", gap: "8px" }}>
+        <Link href="/notifications">Notifications</Link>
+        <Link href="/chats">Chats</Link>
+      </div>
+
       <h1>Skill-Circle</h1>
       <div>
         <SignedOut>

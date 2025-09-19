@@ -3,6 +3,7 @@
 import { useAuth } from "@clerk/nextjs";
 import { useState } from "react";
 import { TextField, Button, Box, Typography, Alert } from "@mui/material";
+import ImageUpload from "./ImageUpload";
 
 export default function CreateOfferForm({ onPostSuccess }) {
   const { getToken } = useAuth();
@@ -10,6 +11,7 @@ export default function CreateOfferForm({ onPostSuccess }) {
   const [description, setDescription] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [posterImageUrl, setPosterImageUrl] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,7 +28,12 @@ export default function CreateOfferForm({ onPostSuccess }) {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ title, description, type: "ASK" }),
+          body: JSON.stringify({
+            title,
+            description,
+            posterImageUrl,
+            type: "ASK",
+          }),
         },
       );
 
@@ -81,6 +88,7 @@ export default function CreateOfferForm({ onPostSuccess }) {
         </Alert>
       )}
       <Typography variant="h5">Request a Skill</Typography>
+      <ImageUpload onUploadSuccess={(url) => setPosterImageUrl(url)} />
       <TextField
         fullWidth
         label="Skill Title"

@@ -44,6 +44,7 @@ public class SkillPostService {
         SkillPost newSkillPost = new SkillPost();
         newSkillPost.setTitle(request.title());
         newSkillPost.setDescription(request.description());
+        newSkillPost.setPosterImageUrl(request.posterImageUrl());
         newSkillPost.setType(request.type());
         newSkillPost.setAuthor(author);
 

@@ -9,6 +9,7 @@ import {
   CircularProgress,
   CardActions,
   Button,
+  CardMedia,
 } from "@mui/material";
 
 export default function NearbySkills({ skills, isLoading, user }) {
@@ -92,6 +93,15 @@ export default function NearbySkills({ skills, isLoading, user }) {
                 variant="outlined"
               >
                 <CardContent>
+                  {/* Conditionally render the CardMedia component */}
+                  {skill.posterImageUrl && (
+                    <CardMedia
+                      component="img"
+                      height="140"
+                      image={skill.posterImageUrl}
+                      alt={skill.title} // Use the skill title for accessibility
+                    />
+                  )}
                   <Typography variant="h6">{skill.title}</Typography>
                   <Typography
                     variant="body2"
@@ -144,6 +154,15 @@ export default function NearbySkills({ skills, isLoading, user }) {
                 variant="outlined"
               >
                 <CardContent>
+                  {/* Conditionally render the CardMedia component */}
+                  {skill.posterImageUrl && (
+                    <CardMedia
+                      component="img"
+                      height="140"
+                      image={skill.posterImageUrl}
+                      alt={skill.title} // Use the skill title for accessibility
+                    />
+                  )}
                   <Typography variant="h6">{skill.title}</Typography>
                   <Typography
                     variant="body2"

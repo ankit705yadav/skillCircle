@@ -32,6 +32,9 @@ public class SkillPost {
     private String title;
     private String description;
 
+    @Column(nullable = true)
+    private String posterImageUrl;
+
     // --- GETTERS AND SETTERS ---
     public Long getId() {
         return id;
@@ -65,7 +68,16 @@ public class SkillPost {
         return description;
     }
 
+
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String getPosterImageUrl() {
+        return posterImageUrl;
+    }
+
+    public void setPosterImageUrl(String posterImageUrl) {
+        this.posterImageUrl = posterImageUrl;
     }
 }

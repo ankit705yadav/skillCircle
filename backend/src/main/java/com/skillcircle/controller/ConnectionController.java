@@ -119,7 +119,8 @@ public class ConnectionController {
                 post.getTitle(),
                 post.getDescription(),
                 post.getType().name(),
-                authorDto
+                authorDto,
+                post.getPosterImageUrl()
         );
     }
 }

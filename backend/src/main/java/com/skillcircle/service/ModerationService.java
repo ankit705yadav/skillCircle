@@ -16,7 +16,7 @@ public class ModerationService {
     @Value("${perspective.api.key}")
     private String apiKey;
 
-    private static final double TOXICITY_THRESHOLD = 0.8; // Set a threshold (0.0 to 1.0)
+    private static final double TOXICITY_THRESHOLD = 0.5; // Set a threshold (0.0 to 1.0)
 
     public boolean isContentInappropriate(String text) throws IOException {
         if (text == null || text.trim().isEmpty()) {

@@ -35,6 +35,11 @@ public class SkillPost {
     @Column(nullable = true)
     private String posterImageUrl;
 
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private boolean archived = false;
+
+
+
     // --- GETTERS AND SETTERS ---
     public Long getId() {
         return id;
@@ -68,7 +73,6 @@ public class SkillPost {
         return description;
     }
 
-
     public void setDescription(String description) {
         this.description = description;
     }
@@ -79,5 +83,13 @@ public class SkillPost {
 
     public void setPosterImageUrl(String posterImageUrl) {
         this.posterImageUrl = posterImageUrl;
+    }
+
+    public boolean isArchived() {
+        return archived;
+    }
+
+    public void setArchived(boolean archived) {
+        this.archived = archived;
     }
 }

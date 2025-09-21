@@ -69,7 +69,34 @@ public class SkillPostController {
                 post.getDescription(),
                 post.getType().name(),
                 authorDto,
-                post.getPosterImageUrl()
+                post.getPosterImageUrl(),
+                post.isArchived()
         );
+    }
+
+    /**
+     * Gets all skill posts for the currently authenticated user.
+     */
+    @GetMapping("/my-skills")
+    public List<SkillPostResponse> getMySkills(@AuthenticationPrincipal Jwt jwt) {
+        String clerkUserId = jwt.getSubject();
+        List<SkillPost> skillPosts = skillPostRepository.findAllByAuthor_ClerkUserId(clerkUserId);
+
+        return skillPosts.stream()
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
+    }
+
+    @PostMapping("/{skillPostId}/archive")
+    public ResponseEntity<?> archiveSkill(
+            @PathVariable Long skillPostId,
+            @AuthenticationPrincipal Jwt jwt) {
+        try {
+            String clerkUserId = jwt.getSubject();
+            skillPostService.archiveSkillPost(skillPostId, clerkUserId);
+            return ResponseEntity.ok().body(Map.of("message", "Post archived successfully."));
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", e.getMessage()));
+        } // ... other exception handling
     }
 }

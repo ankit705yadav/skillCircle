@@ -6,5 +6,6 @@ public record SkillPostResponse(
         String description,
         String type,
         AuthorResponse author,
-        String posterImageUrl
+        String posterImageUrl,
+         boolean archived
 ) {}

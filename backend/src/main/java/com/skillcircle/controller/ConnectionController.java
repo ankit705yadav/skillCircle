@@ -120,7 +120,8 @@ public class ConnectionController {
                 post.getDescription(),
                 post.getType().name(),
                 authorDto,
-                post.getPosterImageUrl()
+                post.getPosterImageUrl(),
+                post.isArchived()
         );
     }
 }

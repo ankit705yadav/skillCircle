@@ -20,6 +20,7 @@ export default function Header() {
       <div style={{ position: "absolute", display: "flex", gap: "8px" }}>
         <Link href="/notifications">Notifications</Link>
         <Link href="/chats">Chats</Link>
+        <Link href="/my-skills">my skills</Link>
       </div>
 
       <Link href="/" legacyBehavior>

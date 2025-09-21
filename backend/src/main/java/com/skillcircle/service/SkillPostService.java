@@ -51,4 +51,19 @@ public class SkillPostService {
         // 3. Save the new entity to the database and return it
         return skillPostRepository.save(newSkillPost);
     }
+
+    @Transactional
+    public void archiveSkillPost(Long skillPostId, String clerkUserId) {
+        SkillPost post = skillPostRepository.findById(skillPostId)
+                .orElseThrow(() -> new IllegalArgumentException("Post not found with ID: " + skillPostId));
+
+        // Security check remains the same
+        if (!post.getAuthor().getClerkUserId().equals(clerkUserId)) {
+            throw new SecurityException("User is not authorized to archive this post.");
+        }
+
+        // ✅ New Logic: Set the archived flag and save
+        post.setArchived(true);
+        skillPostRepository.save(post);
+    }
 }

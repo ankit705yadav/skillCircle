@@ -1,16 +1,7 @@
 "use client";
 
 import { useAuth } from "@clerk/nextjs";
-import {
-  Box,
-  Card,
-  CardContent,
-  Typography,
-  CircularProgress,
-  CardActions,
-  Button,
-  CardMedia,
-} from "@mui/material";
+import SkillCard from "./skillCard/SkillCard";
 
 export default function NearbySkills({ skills, isLoading, user }) {
   const { getToken } = useAuth();
@@ -45,150 +36,70 @@ export default function NearbySkills({ skills, isLoading, user }) {
 
   if (isLoading) {
     return (
-      <Box sx={{ display: "flex", justifyContent: "center", my: 4 }}>
-        <CircularProgress />
-        <Typography sx={{ ml: 2 }}>
-          Waiting for location and skills...
-        </Typography>
-      </Box>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          gap: 10,
+          alignItems: "center",
+        }}
+      >
+        <p>Waiting for location and skills...</p>
+      </div>
     );
   }
 
   return (
     <>
-      <Typography variant="h4">Nearby Skills</Typography>
+      <h2> Nearby Skills</h2>
+
+      {/* ---------- OFFERS ---------- */}
       <div
         style={{
-          border: "4px solid green",
           display: "flex",
-          justifyContent: "space-around",
+          flexDirection: "row",
           alignItems: "center",
-          gap: 2,
+          justifyContent: "flex-start",
+          gap: 20,
           flexWrap: "wrap",
+          rowGap: 20,
         }}
       >
-        {/* Your JSX for Offers and Asks remains the same */}
-        {/* ---------- OFFERS ---------- */}
-        <Box
-          sx={{
-            borderWidth: 1,
-            borderColor: "primary.main",
-            borderStyle: "solid",
-            padding: 2,
-            margin: 2,
-            display: "flex",
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "flex-start",
-            gap: 2,
-          }}
-        >
-          <Typography variant="h6">Offers</Typography>
-          {skills
-            .filter((skill) => skill.type === "OFFER")
-            .map((skill: any) => (
-              <Card
-                key={skill.id}
-                sx={{ my: 2, backgroundColor: "#f5f5f5", maxWidth: "200px" }}
-                variant="outlined"
-              >
-                <CardContent>
-                  {/* Conditionally render the CardMedia component */}
-                  {skill.posterImageUrl && (
-                    <CardMedia
-                      component="img"
-                      height="140"
-                      image={skill.posterImageUrl}
-                      alt={skill.title} // Use the skill title for accessibility
-                    />
-                  )}
-                  <Typography variant="h6">{skill.title}</Typography>
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{ mb: 1.5 }}
-                  >
-                    by {skill.author.username}
-                  </Typography>
-                  <Typography>{skill.description}</Typography>
-                  <Typography variant="caption">{skill?.type}</Typography>
-                </CardContent>
-                {/* Conditional rendering for the button */}
-                {user?.id !== skill.author.clerkUserId && (
-                  <CardActions>
-                    <Button
-                      size="small"
-                      variant="contained"
-                      onClick={() => handleRequestConnection(skill.id)}
-                    >
-                      {skill.type === "OFFER" ? "Request Help" : "Offer Help"}
-                    </Button>
-                  </CardActions>
-                )}
-              </Card>
-            ))}
-        </Box>
+        {skills
+          .filter((skill) => skill.type === "OFFER")
+          .map((skill: any) => (
+            <SkillCard
+              key={skill.id}
+              skill={skill}
+              user={user}
+              handleRequestConnection={() => handleRequestConnection(skill.id)}
+            />
+          ))}
+      </div>
 
-        {/* ---------- ASKS ---------- */}
-        <Box
-          sx={{
-            borderWidth: 1,
-            borderColor: "primary.main",
-            borderStyle: "solid",
-            padding: 2,
-            margin: 2,
-            display: "flex",
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "flex-start",
-            gap: 2,
-          }}
-        >
-          <Typography variant="h6">ASKS</Typography>
-          {skills
-            .filter((skill) => skill.type === "ASK")
-            .map((skill: any) => (
-              <Card
-                key={skill.id}
-                sx={{ my: 2, backgroundColor: "#f5f5f5", maxWidth: "200px" }}
-                variant="outlined"
-              >
-                <CardContent>
-                  {/* Conditionally render the CardMedia component */}
-                  {skill.posterImageUrl && (
-                    <CardMedia
-                      component="img"
-                      height="140"
-                      image={skill.posterImageUrl}
-                      alt={skill.title} // Use the skill title for accessibility
-                    />
-                  )}
-                  <Typography variant="h6">{skill.title}</Typography>
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{ mb: 1.5 }}
-                  >
-                    by {skill.author.username}
-                  </Typography>
-                  <Typography>{skill.description}</Typography>
-                  <Typography variant="caption">{skill?.type}</Typography>
-                </CardContent>
-                {/* Conditional rendering for the button */}
-                {user?.id !== skill.author.clerkUserId && (
-                  <CardActions>
-                    <Button
-                      size="small"
-                      variant="contained"
-                      onClick={() => handleRequestConnection(skill.id)}
-                    >
-                      {skill.type === "OFFER" ? "Request Help" : "Offer Help"}
-                    </Button>
-                  </CardActions>
-                )}
-              </Card>
-            ))}
-        </Box>
+      {/* ---------- ASKS ---------- */}
+      <div
+        style={{
+          marginTop: 30,
+          display: "flex",
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "flex-start",
+          gap: 20,
+          flexWrap: "wrap",
+          rowGap: 20,
+        }}
+      >
+        {skills
+          .filter((skill) => skill.type === "ASK")
+          .map((skill: any) => (
+            <SkillCard
+              key={skill.id}
+              skill={skill}
+              user={user}
+              handleRequestConnection={() => handleRequestConnection(skill.id)}
+            />
+          ))}
       </div>
     </>
   );

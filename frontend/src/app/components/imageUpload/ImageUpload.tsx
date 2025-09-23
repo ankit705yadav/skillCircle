@@ -2,14 +2,8 @@
 
 import { useState, useEffect } from "react";
 import * as nsfwjs from "nsfwjs";
-import {
-  Box,
-  Typography,
-  Alert,
-  CircularProgress,
-  Button,
-} from "@mui/material";
 import { useAuth } from "@clerk/nextjs";
+import "./ImageUpload.css";
 
 interface ImageUploadProps {
   onUploadSuccess: (url: string) => void;
@@ -102,7 +96,6 @@ export default function ImageUpload({ onUploadSuccess }: ImageUploadProps) {
     setStatus("uploading");
     try {
       const auth = await authenticator();
-
       const formData = new FormData();
       formData.append("file", file);
       formData.append("fileName", "poster.jpg");
@@ -135,39 +128,36 @@ export default function ImageUpload({ onUploadSuccess }: ImageUploadProps) {
   };
 
   return (
-    <Box my={2}>
-      <Typography variant="subtitle1">Add a Poster (Optional)</Typography>
+    <div className="image-upload-container">
+      <label className="image-upload-label">Add a Poster (Optional)</label>
+      <input
+        type="file"
+        accept="image/*"
+        onChange={handleFileSelect}
+        disabled={status === "moderating" || status === "uploading"}
+      />
 
-      <input type="file" accept="image/*" onChange={handleFileSelect} />
-
-      {status === "moderating" && (
-        <CircularProgress size={20} sx={{ display: "block", mt: 1, mb: 1 }} />
+      {/* Show loader during moderation OR upload */}
+      {(status === "moderating" || status === "uploading") && (
+        <div className="loader-container">
+          <div className="loader"></div>
+          <p>{status === "moderating" ? "Analyzing..." : "Uploading..."}</p>
+        </div>
       )}
-      {preview && (
-        <img
-          src={preview}
-          alt="Preview"
-          width={200}
-          style={{ marginTop: "10px" }}
-        />
-      )}
 
+      {preview && <img src={preview} alt="Preview" className="image-preview" />}
+
+      {/* Show Upload button only when moderation is done and successful */}
       {file && status === "idle" && (
-        <Button variant="contained" onClick={handleUpload} sx={{ mt: 1 }}>
-          Upload
-        </Button>
+        <button type="button" className="upload-button" onClick={handleUpload}>
+          Upload Image
+        </button>
       )}
 
       {status === "success" && (
-        <Alert severity="success" sx={{ mt: 1 }}>
-          Image attached!
-        </Alert>
+        <div className="alert alert-success">Image attached!</div>
       )}
-      {error && (
-        <Alert severity="error" sx={{ mt: 1 }}>
-          {error}
-        </Alert>
-      )}
-    </Box>
+      {error && <div className="alert alert-error">{error}</div>}
+    </div>
   );
 }

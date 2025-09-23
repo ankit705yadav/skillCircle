@@ -1,0 +1,110 @@
+/* Main form container */
+.form-container {
+    margin-top: 2rem;
+    background-color: #f2f2f2;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border: 1px solid #ccc;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Error alert styling */
+.form-error-alert {
+    background-color: #fdecea;
+    color: #912d2b;
+    border: 1px solid #e5a5a3;
+    padding: 1rem;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+}
+
+/* Form title */
+.form-title {
+    font-size: 1.5rem;
+    font-weight: 500;
+    margin-bottom: 1rem;
+    font-family: sans-serif;
+    color: #222;
+}
+
+/* Radio button group styling */
+.form-radio-group {
+    margin-bottom: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 0.5rem 1rem;
+}
+
+.form-radio-legend {
+    font-size: 0.8rem;
+    font-weight: bold;
+    font-family: sans-serif;
+    padding: 0 0.5rem;
+}
+
+.form-radio-options {
+    display: flex;
+    gap: 1.5rem;
+}
+
+.form-radio-label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    font-family: sans-serif;
+}
+
+/* Input field and label styling */
+.form-input-group {
+    margin: 1rem 0;
+}
+
+.form-label {
+    display: block;
+    font-family: sans-serif;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: #333;
+}
+
+.form-input,
+.form-textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1rem;
+    box-sizing: border-box; /* Important for padding and width to work together */
+}
+
+.form-textarea {
+    min-height: 120px;
+    resize: vertical;
+}
+
+/* Submit button styling */
+.form-submit-button {
+    margin-top: 1rem;
+    width: 100%;
+    padding: 0.75rem;
+    background-color: #1976d2; /* MUI primary blue */
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.form-submit-button:hover {
+    background-color: #1565c0;
+}
+
+.form-submit-button:disabled {
+    background-color: #a0a0a0;
+    cursor: not-allowed;
+}

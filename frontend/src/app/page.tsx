@@ -3,8 +3,7 @@
 import { useAuth, useUser } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
 
-import CreateOfferForm from "./components/CreateOfferForm";
-import CreateAskForm from "./components/CreateAskForm";
+import PostForm from "./components/postForm/PostForm";
 import NearbySkills from "./components/NearbySkills";
 
 interface Skill {
@@ -57,8 +56,7 @@ export default function Home() {
   return (
     <div>
       <NearbySkills skills={skills} isLoading={isLoading} user={user} />
-      <CreateOfferForm onPostSuccess={fetchSkills} />
-      <CreateAskForm onPostSuccess={fetchSkills} />
+      <PostForm onPostSuccess={fetchSkills} />
     </div>
   );
 }

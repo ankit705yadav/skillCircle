@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import PostForm from "./components/postForm/PostForm";
 import NearbySkills from "./components/NearbySkills";
+import StatsShowcase from "./components/statsShowcase/StatsShowcase";
 
 interface Skill {
   id: number;
@@ -55,6 +56,7 @@ export default function Home() {
 
   return (
     <div>
+      <StatsShowcase />
       <NearbySkills skills={skills} isLoading={isLoading} user={user} />
       <PostForm onPostSuccess={fetchSkills} />
     </div>

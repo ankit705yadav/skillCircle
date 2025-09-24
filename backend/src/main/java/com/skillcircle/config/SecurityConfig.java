@@ -21,6 +21,7 @@ public class SecurityConfig {
                 // 1. Enable CORS with default settings
                 .cors(Customizer.withDefaults())
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/stats").permitAll()
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().permitAll()
                 )

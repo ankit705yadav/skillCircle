@@ -23,4 +23,6 @@ public interface SkillPostRepository extends JpaRepository<SkillPost, Long> {
 
     // Finds all posts created by a specific user, identified by their Clerk ID
     List<SkillPost> findAllByAuthor_ClerkUserId(String clerkUserId);
+
+    long countByArchived(boolean archived);
 }

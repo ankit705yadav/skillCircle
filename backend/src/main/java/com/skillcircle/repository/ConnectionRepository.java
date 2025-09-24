@@ -21,4 +21,6 @@ public interface ConnectionRepository extends JpaRepository<Connection, Long> {
             @Param("clerkId") String clerkUserId,
             @Param("status") ConnectionStatus status
     );
+
+    long countByStatus(ConnectionStatus status);
 }

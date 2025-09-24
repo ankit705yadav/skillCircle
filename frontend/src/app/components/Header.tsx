@@ -1,61 +1,56 @@
 import { SignedIn, SignedOut, UserButton, SignInButton } from "@clerk/nextjs";
 import Link from "next/link";
+import { Bell, MessageSquare, Star } from "lucide-react";
 
 export default function Header() {
   return (
-    <header
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        backgroundColor: "#fff",
-        border: "1px solid #ccc",
-        borderRadius: "10px",
-        boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
-        padding: "0 1rem",
-        marginBottom: "1rem",
-        marginTop: "1rem",
-      }}
-    >
-      <Link href="/" style={{ textDecoration: "none", color: "black" }}>
-        <h2> Skill Circle</h2>
+    <header className="flex items-center justify-between bg-white border border-gray-200 rounded-xl shadow-md px-6 py-3 mb-6 mt-4">
+      {/* Logo */}
+      <Link
+        href="/"
+        className="text-xl font-bold text-gray-800 hover:text-blue-600 transition"
+      >
+        Skill Circle
       </Link>
 
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-around",
-          alignItems: "center",
-          gap: 30,
-        }}
-      >
-        <Link href="/notifications">Notifications</Link>
-        <Link href="/chats">Chats</Link>
-        <Link href="/my-skills">my skills</Link>
-      </div>
+      {/* Navigation */}
+      <nav className="flex items-center gap-6">
+        <Link
+          href="/notifications"
+          className="flex items-center gap-2 text-gray-700 hover:text-blue-600 transition"
+        >
+          <Bell className="w-5 h-5" />
+          <span className="hidden sm:inline">Notifications</span>
+        </Link>
 
+        <Link
+          href="/chats"
+          className="flex items-center gap-2 text-gray-700 hover:text-blue-600 transition"
+        >
+          <MessageSquare className="w-5 h-5" />
+          <span className="hidden sm:inline">Chats</span>
+        </Link>
+
+        <Link
+          href="/my-skills"
+          className="flex items-center gap-2 text-gray-700 hover:text-blue-600 transition"
+        >
+          <Star className="w-5 h-5" />
+          <span className="hidden sm:inline">My Skills</span>
+        </Link>
+      </nav>
+
+      {/* Auth */}
       <div>
         <SignedOut>
           <SignInButton mode="modal">
-            <button
-              style={{
-                backgroundColor: "blue",
-                border: "none",
-                color: "white",
-                padding: "12px 20px",
-                // textAlign: "center",
-                // textDecoration: "none",
-                // display: "inline-block",
-                borderRadius: "5px",
-                fontSize: "14px",
-              }}
-            >
+            <button className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg text-sm font-medium shadow transition">
               Sign In
             </button>
           </SignInButton>
         </SignedOut>
         <SignedIn>
-          <UserButton />
+          <UserButton afterSignOutUrl="/" />
         </SignedIn>
       </div>
     </header>

@@ -71,18 +71,24 @@ public class ConnectionController {
 
     // Endpoint to accept a connection
     @PostMapping("/{connectionId}/accept")
-    public ResponseEntity<Connection> acceptConnection(@PathVariable Long connectionId, @AuthenticationPrincipal Jwt jwt) {
+    public ResponseEntity<ConnectionResponseDTO> acceptConnection(@PathVariable Long connectionId, @AuthenticationPrincipal Jwt jwt) {
         String approverClerkId = jwt.getSubject();
         Connection acceptedConnection = connectionService.acceptConnection(connectionId, approverClerkId);
-        return ResponseEntity.ok(acceptedConnection);
+
+        // Convert to DTO to avoid serialization issues with lazy-loaded entities
+        ConnectionResponseDTO response = convertToDto(acceptedConnection);
+        return ResponseEntity.ok(response);
     }
 
     // Endpoint to reject a connection
     @PostMapping("/{connectionId}/reject")
-    public ResponseEntity<Connection> rejectConnection(@PathVariable Long connectionId, @AuthenticationPrincipal Jwt jwt) {
+    public ResponseEntity<ConnectionResponseDTO> rejectConnection(@PathVariable Long connectionId, @AuthenticationPrincipal Jwt jwt) {
         String approverClerkId = jwt.getSubject();
         Connection rejectedConnection = connectionService.rejectConnection(connectionId, approverClerkId);
-        return ResponseEntity.ok(rejectedConnection);
+
+        // Convert to DTO to avoid serialization issues with lazy-loaded entities
+        ConnectionResponseDTO response = convertToDto(rejectedConnection);
+        return ResponseEntity.ok(response);
     }
 
     // Helper method to convert a Connection entity to its DTO representation.

@@ -55,10 +55,16 @@ export default function Home() {
   }, [isLoaded, isSignedIn]); // Dependency on auth state
 
   return (
-    <div>
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       <StatsShowcase />
-      <NearbySkills skills={skills} isLoading={isLoading} user={user} />
-      <PostForm onPostSuccess={fetchSkills} />
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <NearbySkills skills={skills} isLoading={isLoading} user={user} />
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+        <PostForm onPostSuccess={fetchSkills} />
+      </div>
     </div>
   );
 }

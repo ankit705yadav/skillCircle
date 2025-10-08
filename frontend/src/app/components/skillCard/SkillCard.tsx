@@ -1,5 +1,3 @@
-import "./skillCard.css";
-
 interface Skill {
   id: number;
   title: string;
@@ -29,41 +27,38 @@ export default function SkillCard({
 }: SkillCardProps) {
   return (
     <div
-      className="skill-card"
-      // style={{
-      //   backgroundColor: skill.type === "OFFER" ? "#E9B3FB" : "green",
-      // }}
+      className="group relative bg-white rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-shadow duration-300 border border-gray-200 h-full flex flex-col"
       key={skill.id}
     >
-      {/* Conditionally render the image */}
-      <img
-        className="skill-card-media"
-        src={skill.posterImageUrl || "https://placehold.co/600x400"}
-        alt={skill.title}
-      />
+      {/* Image */}
+      <div className="relative h-48 overflow-hidden bg-gray-100">
+        <img
+          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+          src={skill.posterImageUrl || "https://placehold.co/600x400"}
+          alt={skill.title}
+        />
 
-      {/* Tag */}
-      <p className="skill-card-tag">
-        {skill.type === "OFFER" ? "Offer" : "Request"}
-      </p>
-
-      <div className="skill-card-content">
-        <h3 className="skill-card-title">{skill.title}</h3>
-        <p className="skill-card-author">by {skill.author.username}</p>
-        {/*<p className="skill-card-description">{skill.description}</p>*/}
+        {/* Tag overlay */}
+        <div className="absolute top-3 left-3">
+          <span
+            className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold shadow-sm ${
+              skill.type === "OFFER"
+                ? "bg-blue-500 text-white"
+                : "bg-green-500 text-white"
+            }`}
+          >
+            {skill.type === "OFFER" ? "Offer" : "Request"}
+          </span>
+        </div>
       </div>
 
-      {/* Conditional rendering for the button */}
-      {/*{user?.id !== skill.author.clerkUserId && (
-        <div className="skill-card-actions">
-          <button
-            className="skill-card-button"
-            onClick={() => handleRequestConnection(skill.id)}
-          >
-            {skill.type === "OFFER" ? "Request Help" : "Offer Help"}
-          </button>
-        </div>
-      )}*/}
+      {/* Content */}
+      <div className="p-4 flex-grow flex flex-col">
+        <h3 className="text-lg font-semibold text-gray-900 mb-1 line-clamp-2">
+          {skill.title}
+        </h3>
+        <p className="text-sm text-gray-600">by {skill.author.username}</p>
+      </div>
     </div>
   );
 }

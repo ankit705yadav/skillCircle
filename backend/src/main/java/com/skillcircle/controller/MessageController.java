@@ -47,7 +47,7 @@ public class MessageController {
     }
 
     @PostMapping
-    public ResponseEntity<Message> sendMessage(
+    public ResponseEntity<MessageResponseDTO> sendMessage(
             @PathVariable Long connectionId,
             @RequestBody SendMessageRequest request, // Use the DTO
             @AuthenticationPrincipal Jwt jwt) {
@@ -61,7 +61,10 @@ public class MessageController {
                 request.content()
         );
 
-        return new ResponseEntity<>(savedMessage, HttpStatus.CREATED);
+        // Convert to DTO to avoid serialization issues with lazy-loaded entities
+        MessageResponseDTO response = convertToDto(savedMessage);
+
+        return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
     // Helper method to convert a Message entity to its DTO representation.

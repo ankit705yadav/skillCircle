@@ -1,5 +1,6 @@
 import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
+import { Toaster } from "sonner";
 import Header from "./components/Header";
 import UserLocationSync from "./components/UserLocationSync";
 import AppInitializer from "./components/AppInitializer";
@@ -20,6 +21,7 @@ export default function RootLayout({
             <main>
               <AppInitializer>{children}</AppInitializer>
             </main>
+            <Toaster position="top-right" richColors />
           </ThemeRegistry>
         </body>
       </html>

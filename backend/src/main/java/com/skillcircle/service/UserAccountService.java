@@ -35,8 +35,8 @@ public class UserAccountService {
                 .orElseGet(() -> {
                     UserAccount newUser = new UserAccount();
                     newUser.setClerkUserId(clerkUserId);
-                    // You can add logic here to generate an anonymous username
-                    return newUser;
+                    // Save immediately to avoid race conditions
+                    return userAccountRepository.save(newUser);
                 });
 
         // Create a geographic Point from the coordinates

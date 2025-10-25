@@ -26,6 +26,8 @@ public class Connection {
 
     private LocalDateTime createdAt;
 
+    private LocalDateTime acceptedAt;
+
     // Getters and Setters
 
     public Long getId() {
@@ -74,5 +76,13 @@ public class Connection {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public LocalDateTime getAcceptedAt() {
+        return acceptedAt;
+    }
+
+    public void setAcceptedAt(LocalDateTime acceptedAt) {
+        this.acceptedAt = acceptedAt;
     }
 }

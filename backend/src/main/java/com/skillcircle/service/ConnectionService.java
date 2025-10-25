@@ -20,12 +20,14 @@ public class ConnectionService {
     private final ConnectionRepository connectionRepository;
     private final SkillPostRepository skillPostRepository;
     private final UserAccountRepository userAccountRepository;
+    private final NotificationService notificationService;
 
 
-    public ConnectionService(ConnectionRepository connectionRepository, SkillPostRepository skillPostRepository, UserAccountRepository userAccountRepository){
+    public ConnectionService(ConnectionRepository connectionRepository, SkillPostRepository skillPostRepository, UserAccountRepository userAccountRepository, NotificationService notificationService){
         this.connectionRepository = connectionRepository;
         this.skillPostRepository = skillPostRepository;
         this.userAccountRepository = userAccountRepository;
+        this.notificationService = notificationService;
     }
 
     public List<Connection> getActiveConnections(String clerkUserId) {
@@ -68,6 +70,7 @@ public class ConnectionService {
         }
 
         connection.setStatus(ConnectionStatus.ACCEPTED);
+        connection.setAcceptedAt(LocalDateTime.now());
         return connectionRepository.save(connection);
     }
 

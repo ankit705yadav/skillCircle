@@ -9,6 +9,9 @@ import {
   ChevronRight,
   MessageSquare,
   Inbox,
+  Calendar,
+  Briefcase,
+  BookOpen,
 } from "lucide-react";
 
 interface Author {
@@ -16,13 +19,25 @@ interface Author {
   username: string;
 }
 interface SkillPost {
+  id: number;
   title: string;
+  description: string;
+  type: string;
+  posterImageUrl?: string;
 }
 interface Connection {
   id: number;
   skillPost: SkillPost;
   requester: Author;
   approver: Author;
+  createdAt: string;
+  acceptedAt: string;
+}
+
+interface GroupedChat {
+  otherUser: Author;
+  connections: Connection[];
+  latestAcceptedAt: string;
 }
 
 export default function ChatsPage() {
@@ -30,6 +45,7 @@ export default function ChatsPage() {
   const { user } = useUser();
   const router = useRouter();
   const [connections, setConnections] = useState<Connection[]>([]);
+  const [groupedChats, setGroupedChats] = useState<GroupedChat[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -50,6 +66,45 @@ export default function ChatsPage() {
         if (response.ok) {
           const data = await response.json();
           setConnections(data);
+
+          // Group connections by other user
+          const grouped = new Map<string, GroupedChat>();
+
+          data.forEach((connection: Connection) => {
+            const otherUser =
+              user?.id === connection.requester.clerkUserId
+                ? connection.approver
+                : connection.requester;
+
+            const userId = otherUser.clerkUserId;
+
+            if (grouped.has(userId)) {
+              const existing = grouped.get(userId)!;
+              existing.connections.push(connection);
+              // Update latest accepted date if this one is more recent
+              if (
+                new Date(connection.acceptedAt) >
+                new Date(existing.latestAcceptedAt)
+              ) {
+                existing.latestAcceptedAt = connection.acceptedAt;
+              }
+            } else {
+              grouped.set(userId, {
+                otherUser,
+                connections: [connection],
+                latestAcceptedAt: connection.acceptedAt,
+              });
+            }
+          });
+
+          // Convert to array and sort by latest accepted date
+          const groupedArray = Array.from(grouped.values()).sort(
+            (a, b) =>
+              new Date(b.latestAcceptedAt).getTime() -
+              new Date(a.latestAcceptedAt).getTime(),
+          );
+
+          setGroupedChats(groupedArray);
         }
       } catch (error) {
         console.error("Failed to fetch active connections:", error);
@@ -59,10 +114,11 @@ export default function ChatsPage() {
     };
 
     fetchActiveConnections();
-  }, [getToken]);
+  }, [getToken, user?.id]);
 
-  const handleConnectionClick = (connectionId: number) => {
-    router.push(`/chats/${connectionId}`);
+  const handleChatClick = (otherUserId: string) => {
+    console.log("Navigating to chat with user:", otherUserId);
+    router.push(`/chats/${encodeURIComponent(otherUserId)}`);
   };
 
   if (isLoading) {
@@ -89,17 +145,17 @@ export default function ChatsPage() {
         </div>
 
         {/* Conversations Count Badge */}
-        {connections.length > 0 && (
+        {groupedChats.length > 0 && (
           <div className="mb-6">
             <span className="inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold bg-blue-100 text-blue-800">
-              {connections.length} active{" "}
-              {connections.length === 1 ? "conversation" : "conversations"}
+              {groupedChats.length} active{" "}
+              {groupedChats.length === 1 ? "conversation" : "conversations"}
             </span>
           </div>
         )}
 
         {/* Conversations List */}
-        {connections.length === 0 ? (
+        {groupedChats.length === 0 ? (
           <div className="text-center py-16">
             <div className="flex justify-center mb-4">
               <Inbox className="w-20 h-20 text-gray-300" />
@@ -113,16 +169,11 @@ export default function ChatsPage() {
           </div>
         ) : (
           <div className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
-            {connections.map((connection, index) => {
-              const otherUser =
-                user?.id === connection.requester.clerkUserId
-                  ? connection.approver
-                  : connection.requester;
-
+            {groupedChats.map((chat, index) => {
               return (
-                <div key={connection.id}>
+                <div key={chat.otherUser.clerkUserId}>
                   <button
-                    onClick={() => handleConnectionClick(connection.id)}
+                    onClick={() => handleChatClick(chat.otherUser.clerkUserId)}
                     className="w-full px-6 py-4 hover:bg-gray-50 transition-colors text-left group"
                   >
                     <div className="flex items-center gap-4">
@@ -137,15 +188,63 @@ export default function ChatsPage() {
                       <div className="flex-grow min-w-0">
                         <div className="flex items-center justify-between mb-1">
                           <h3 className="text-lg font-semibold text-gray-900 truncate">
-                            {otherUser.username}
+                            {chat.otherUser.username}
                           </h3>
+                          {chat.connections.length > 1 && (
+                            <span className="px-3 py-1 text-sm font-semibold rounded-full bg-purple-600 text-white">
+                              {chat.connections.length} posts
+                            </span>
+                          )}
                         </div>
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <MessageSquare className="w-4 h-4 flex-shrink-0" />
-                          <p className="truncate">
-                            Regarding: {connection.skillPost.title}
-                          </p>
-                        </div>
+                        {/* Show only the most recent offer */}
+                        {(() => {
+                          // Sort connections by acceptedAt to get the latest
+                          const latestConnection = [...chat.connections].sort(
+                            (a, b) =>
+                              new Date(b.acceptedAt).getTime() -
+                              new Date(a.acceptedAt).getTime(),
+                          )[0];
+
+                          return (
+                            <div className="flex items-start gap-2">
+                              <span
+                                className={`px-2 py-0.5 text-xs font-medium rounded-full flex-shrink-0 ${
+                                  latestConnection.skillPost.type === "OFFER"
+                                    ? "bg-green-100 text-green-700"
+                                    : "bg-blue-100 text-blue-700"
+                                }`}
+                              >
+                                {latestConnection.skillPost.type === "OFFER" ? (
+                                  <span className="flex items-center gap-1">
+                                    <Briefcase className="w-3 h-3" />
+                                    Offer
+                                  </span>
+                                ) : (
+                                  <span className="flex items-center gap-1">
+                                    <BookOpen className="w-3 h-3" />
+                                    Ask
+                                  </span>
+                                )}
+                              </span>
+                              <div className="flex-grow min-w-0">
+                                <p className="text-sm text-gray-700 truncate">
+                                  offer by {latestConnection.skillPost.title}
+                                </p>
+                                {latestConnection.acceptedAt && (
+                                  <p className="text-xs text-gray-500">
+                                    {new Date(
+                                      latestConnection.acceptedAt,
+                                    ).toLocaleDateString("en-US", {
+                                      month: "short",
+                                      day: "numeric",
+                                      year: "numeric",
+                                    })}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </div>
 
                       {/* Arrow */}
@@ -156,7 +255,7 @@ export default function ChatsPage() {
                   </button>
 
                   {/* Divider */}
-                  {index < connections.length - 1 && (
+                  {index < groupedChats.length - 1 && (
                     <div className="border-b border-gray-200"></div>
                   )}
                 </div>

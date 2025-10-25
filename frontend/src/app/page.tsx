@@ -3,7 +3,6 @@
 import { useAuth, useUser } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
 
-import PostForm from "./components/postForm/PostForm";
 import NearbySkills from "./components/NearbySkills";
 import StatsShowcase from "./components/statsShowcase/StatsShowcase";
 
@@ -60,10 +59,6 @@ export default function Home() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <NearbySkills skills={skills} isLoading={isLoading} user={user} />
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
-        <PostForm onPostSuccess={fetchSkills} />
       </div>
     </div>
   );

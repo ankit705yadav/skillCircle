@@ -6,6 +6,7 @@ import com.skillcircle.dto.AuthorResponse;
 import com.skillcircle.dto.ConnectionResponseDTO;
 import com.skillcircle.dto.SkillPostResponse;
 import com.skillcircle.service.ConnectionService;
+import com.skillcircle.service.NotificationService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -21,9 +22,11 @@ import java.util.stream.Collectors;
 public class ConnectionController {
 
     private final ConnectionService connectionService;
+    private final NotificationService notificationService;
 
-    public ConnectionController(ConnectionService connectionService){
+    public ConnectionController(ConnectionService connectionService, NotificationService notificationService){
         this.connectionService = connectionService;
+        this.notificationService = notificationService;
     }
 
     @PostMapping
@@ -37,9 +40,15 @@ public class ConnectionController {
     // We convert the saved entity to a DTO before sending it back
     ConnectionResponseDTO response = convertToDto(newConnection);
 
+    // Send WebSocket notification to the approver (post author)
+    notificationService.notifyConnectionRequest(
+        newConnection.getApprover().getClerkUserId(),
+        response
+    );
+
     return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
-    
+
 
     // Endpoint to get all connection-requests
     @GetMapping("/notifications")
@@ -77,6 +86,20 @@ public class ConnectionController {
 
         // Convert to DTO to avoid serialization issues with lazy-loaded entities
         ConnectionResponseDTO response = convertToDto(acceptedConnection);
+
+        // Send WebSocket notification to the requester
+        notificationService.notifyConnectionAccepted(
+            acceptedConnection.getRequester().getClerkUserId(),
+            response
+        );
+
+        // Also notify both parties about the connection status change
+        notificationService.notifyConnectionStatusChange(
+            acceptedConnection.getRequester().getClerkUserId(),
+            acceptedConnection.getApprover().getClerkUserId(),
+            response
+        );
+
         return ResponseEntity.ok(response);
     }
 
@@ -108,7 +131,9 @@ public class ConnectionController {
                 connection.getStatus().name(),
                 skillPostDto,
                 requesterDto,
-                approverDto
+                approverDto,
+                connection.getCreatedAt(),
+                connection.getAcceptedAt()
         );
     }
 

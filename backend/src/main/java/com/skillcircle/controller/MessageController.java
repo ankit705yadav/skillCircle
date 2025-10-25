@@ -6,6 +6,7 @@ import com.skillcircle.dto.SendMessageRequest;
 import com.skillcircle.dto.MessageResponseDTO;
 import com.skillcircle.repository.MessageRepository;
 import com.skillcircle.service.MessageService;
+import com.skillcircle.service.NotificationService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -21,10 +22,12 @@ public class MessageController {
 
     private final MessageService messageService; // Inject the service
     private final MessageRepository messageRepository; // Still needed for GET for now
+    private final NotificationService notificationService;
 
-    public MessageController(MessageService messageService, MessageRepository messageRepository){
+    public MessageController(MessageService messageService, MessageRepository messageRepository, NotificationService notificationService){
         this.messageService = messageService;
         this.messageRepository = messageRepository;
+        this.notificationService = notificationService;
     }
 
     @GetMapping
@@ -63,6 +66,14 @@ public class MessageController {
 
         // Convert to DTO to avoid serialization issues with lazy-loaded entities
         MessageResponseDTO response = convertToDto(savedMessage);
+
+        // Determine the recipient (the other person in the connection)
+        String recipientClerkId = savedMessage.getConnection().getRequester().getClerkUserId().equals(senderClerkId)
+                ? savedMessage.getConnection().getApprover().getClerkUserId()
+                : savedMessage.getConnection().getRequester().getClerkUserId();
+
+        // Send WebSocket notification to the recipient
+        notificationService.notifyNewMessage(recipientClerkId, connectionId, response);
 
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }

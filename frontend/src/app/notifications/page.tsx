@@ -3,12 +3,18 @@
 import { useAuth } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Bell, Check, X, UserPlus, Inbox } from "lucide-react";
+import { Bell, Check, X, UserPlus, Inbox, Wifi, WifiOff } from "lucide-react";
+import { useWebSocket } from "@/lib/contexts/WebSocketContext";
 
 export default function NotificationsPage() {
   const { getToken } = useAuth();
   const [notifications, setNotifications] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const {
+    notifications: wsNotifications,
+    clearNotifications,
+    isConnected,
+  } = useWebSocket();
 
   useEffect(() => {
     const fetchNotifications = async () => {
@@ -26,7 +32,32 @@ export default function NotificationsPage() {
       setIsLoading(false);
     };
     fetchNotifications();
-  }, [getToken]);
+
+    // Clear WebSocket notifications when user views this page
+    clearNotifications();
+  }, [getToken, clearNotifications]);
+
+  // Listen for real-time WebSocket notifications
+  useEffect(() => {
+    wsNotifications.forEach((wsNotif) => {
+      if (wsNotif.type === "CONNECTION_REQUEST") {
+        // Add new connection request to the list in real-time
+        setNotifications((prev) => {
+          // Check if notification already exists to avoid duplicates
+          if (prev.some((n) => n.id === wsNotif.data.id)) {
+            return prev;
+          }
+          // Don't show toast here - it's already shown globally by WebSocketContext
+          return [wsNotif.data, ...prev];
+        });
+      } else if (wsNotif.type === "CONNECTION_STATUS_CHANGED") {
+        // Remove notification if connection status changed (accepted/rejected elsewhere)
+        setNotifications((prev) =>
+          prev.filter((n) => n.id !== wsNotif.entityId),
+        );
+      }
+    });
+  }, [wsNotifications]);
 
   const handleResponse = async (
     connectionId: number,
@@ -77,14 +108,28 @@ export default function NotificationsPage() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <Bell className="w-8 h-8 text-blue-600" />
-            <h1 className="text-4xl font-bold text-gray-900">
-              Connection Requests
-            </h1>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-3">
+              <Bell className="w-8 h-8 text-blue-600" />
+              <h1 className="text-4xl font-bold text-gray-900">
+                Connection Requests
+              </h1>
+            </div>
+            {/* WebSocket Status Indicator */}
+            <div
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${isConnected ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}
+            >
+              {isConnected ? (
+                <Wifi className="w-4 h-4" />
+              ) : (
+                <WifiOff className="w-4 h-4" />
+              )}
+              {isConnected ? "Live" : "Offline"}
+            </div>
           </div>
           <p className="text-gray-600">
-            Manage your incoming connection requests
+            Manage your incoming connection requests{" "}
+            {isConnected && "• Real-time updates enabled"}
           </p>
         </div>
 

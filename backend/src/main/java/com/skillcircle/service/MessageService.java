@@ -18,11 +18,13 @@ public class MessageService {
     private final MessageRepository messageRepository;
     private final ConnectionRepository connectionRepository;
     private final UserAccountRepository userAccountRepository;
+    private final NotificationService notificationService;
 
-    public MessageService(MessageRepository messageRepository, ConnectionRepository connectionRepository, UserAccountRepository userAccountRepository) {
+    public MessageService(MessageRepository messageRepository, ConnectionRepository connectionRepository, UserAccountRepository userAccountRepository, NotificationService notificationService) {
         this.messageRepository = messageRepository;
         this.connectionRepository = connectionRepository;
         this.userAccountRepository = userAccountRepository;
+        this.notificationService = notificationService;
     }
 
     public List<Message> getMessages(Long connectionId, String currentClerkId) {

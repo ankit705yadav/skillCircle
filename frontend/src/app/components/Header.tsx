@@ -6,7 +6,7 @@ import { Bell, MessageSquare, Star, PlusCircle } from "lucide-react";
 import { useWebSocket } from "@/lib/contexts/WebSocketContext";
 
 export default function Header() {
-  const { unreadCount } = useWebSocket();
+  const { unreadCount, unreadMessagesCount } = useWebSocket();
   return (
     <header className="flex items-center justify-between bg-white border border-gray-200 rounded-xl shadow-md px-6 py-3 mb-6 mt-4">
       {/* Logo */}
@@ -42,9 +42,14 @@ export default function Header() {
 
         <Link
           href="/chats"
-          className="flex items-center gap-2 text-gray-700 hover:text-blue-600 transition"
+          className="flex items-center gap-2 text-gray-700 hover:text-blue-600 transition relative"
         >
           <MessageSquare className="w-5 h-5" />
+          {unreadMessagesCount > 0 && (
+            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+              {unreadMessagesCount > 9 ? "9+" : unreadMessagesCount}
+            </span>
+          )}
           <span className="hidden sm:inline">Chats</span>
         </Link>
 

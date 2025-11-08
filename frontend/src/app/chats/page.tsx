@@ -7,12 +7,11 @@ import {
   MessageCircle,
   User,
   ChevronRight,
-  MessageSquare,
   Inbox,
-  Calendar,
   Briefcase,
   BookOpen,
 } from "lucide-react";
+import { useWebSocket } from "@/lib/contexts/WebSocketContext";
 
 interface Author {
   clerkUserId: string;
@@ -44,9 +43,14 @@ export default function ChatsPage() {
   const { getToken } = useAuth();
   const { user } = useUser();
   const router = useRouter();
-  const [connections, setConnections] = useState<Connection[]>([]);
+  const { clearMessagesCount } = useWebSocket();
   const [groupedChats, setGroupedChats] = useState<GroupedChat[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Clear unread messages count when user visits chats page
+    clearMessagesCount();
+  }, [clearMessagesCount]);
 
   useEffect(() => {
     const fetchActiveConnections = async () => {
@@ -65,7 +69,6 @@ export default function ChatsPage() {
         );
         if (response.ok) {
           const data = await response.json();
-          setConnections(data);
 
           // Group connections by other user
           const grouped = new Map<string, GroupedChat>();

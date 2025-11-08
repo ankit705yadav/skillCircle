@@ -35,11 +35,15 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
                     Jwt jwt = jwtDecoder.decode(token);
                     Authentication auth = new JwtAuthenticationToken(jwt);
                     accessor.setUser(auth);
-                    System.out.println("WebSocket authenticated user: " + jwt.getSubject());
+                    System.out.println("✓ WebSocket authenticated successfully for user: " + jwt.getSubject());
                 } catch (Exception e) {
-                    System.err.println("WebSocket authentication failed: " + e.getMessage());
+                    System.err.println("✗ WebSocket authentication failed: " + e.getMessage());
+                    System.err.println("  Client should reconnect with a fresh token");
                     // Allow connection but without authentication
+                    // The frontend will automatically reconnect with a fresh token
                 }
+            } else {
+                System.err.println("✗ WebSocket connection attempt without valid Authorization header");
             }
         }
 

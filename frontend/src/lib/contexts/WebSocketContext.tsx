@@ -31,6 +31,8 @@ interface WebSocketContextType {
   ) => () => void;
   clearNotifications: () => void;
   unreadCount: number;
+  unreadMessagesCount: number;
+  clearMessagesCount: () => void;
 }
 
 const WebSocketContext = createContext<WebSocketContextType | undefined>(
@@ -52,16 +54,35 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
   const [isConnected, setIsConnected] = useState(false);
   const [notifications, setNotifications] = useState<NotificationData[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const clientRef = useRef<Client | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
+  const tokenRefreshIntervalRef = useRef<NodeJS.Timeout>();
   const connectionSubscriptionsRef = useRef<Map<number, any>>(new Map());
 
   const connect = useCallback(async () => {
     if (!userId) return;
 
+    // Deactivate existing client if any
+    if (clientRef.current && clientRef.current.active) {
+      console.log("Deactivating existing WebSocket connection...");
+      try {
+        clientRef.current.deactivate();
+      } catch (error) {
+        console.error("Error deactivating client:", error);
+      }
+    }
+
     try {
-      const token = await getToken();
-      if (!token) return;
+      // Get a fresh token each time we connect
+      // skipCache option forces Clerk to fetch a new token instead of using cached one
+      const token = await getToken({ skipCache: true });
+      if (!token) {
+        console.error("No token available for WebSocket connection");
+        return;
+      }
+
+      console.log("WebSocket connecting with fresh token (expires in ~1 hour)");
 
       const client = new Client({
         webSocketFactory: () =>
@@ -72,7 +93,8 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
         debug: (str) => {
           console.log("STOMP Debug:", str);
         },
-        reconnectDelay: 5000,
+        // Disable automatic reconnect - we'll handle it manually with fresh tokens
+        reconnectDelay: 0,
         heartbeatIncoming: 4000,
         heartbeatOutgoing: 4000,
       });
@@ -81,11 +103,57 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
         console.log("WebSocket Connected");
         setIsConnected(true);
 
+        // Clear any existing token refresh interval
+        if (tokenRefreshIntervalRef.current) {
+          clearInterval(tokenRefreshIntervalRef.current);
+        }
+
+        // Refresh connection every 50 minutes (before 1-hour token expiry)
+        tokenRefreshIntervalRef.current = setInterval(
+          () => {
+            console.log(
+              "Proactively refreshing WebSocket connection with new token...",
+            );
+            connect();
+          },
+          50 * 60 * 1000,
+        ); // 50 minutes in milliseconds
+
         // Subscribe to user-specific notifications queue
         client.subscribe(`/user/queue/notifications`, (message) => {
           const notification: NotificationData = JSON.parse(message.body);
           console.log("Received notification:", notification);
 
+          // Handle NEW_MESSAGE separately - don't add to notifications list
+          if (notification.type === "NEW_MESSAGE") {
+            setUnreadMessagesCount((prev) => prev + 1);
+
+            // Only show message toast if not currently on that chat page
+            if (typeof window !== "undefined") {
+              const currentPath = window.location.pathname;
+              const messageConnectionId =
+                notification.data?.connection?.id || notification.entityId;
+              if (!currentPath.includes(`/chats/${messageConnectionId}`)) {
+                const messageContent = notification.data?.content || "";
+                toast.info(notification.message, {
+                  duration: 5000,
+                  icon: <MessageSquare className="w-5 h-5 text-blue-600" />,
+                  description:
+                    messageContent.substring(0, 50) +
+                    (messageContent.length > 50 ? "..." : ""),
+                  action: {
+                    label: "Open Chat",
+                    onClick: () => {
+                      window.location.href = `/chats/${messageConnectionId}`;
+                    },
+                  },
+                });
+              }
+            }
+            return; // Don't process further for messages
+          }
+
+          // For non-message notifications, add to notifications list
           setNotifications((prev) => [notification, ...prev]);
           setUnreadCount((prev) => prev + 1);
 
@@ -123,31 +191,6 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
               });
               break;
 
-            case "NEW_MESSAGE":
-              // Only show message toast if not currently on that chat page
-              if (typeof window !== "undefined") {
-                const currentPath = window.location.pathname;
-                const messageConnectionId =
-                  notification.data?.connection?.id || notification.entityId;
-                if (!currentPath.includes(`/chats/${messageConnectionId}`)) {
-                  const messageContent = notification.data?.content || "";
-                  toast.info(notification.message, {
-                    duration: 5000,
-                    icon: <MessageSquare className="w-5 h-5 text-blue-600" />,
-                    description:
-                      messageContent.substring(0, 50) +
-                      (messageContent.length > 50 ? "..." : ""),
-                    action: {
-                      label: "Open Chat",
-                      onClick: () => {
-                        window.location.href = `/chats/${messageConnectionId}`;
-                      },
-                    },
-                  });
-                }
-              }
-              break;
-
             case "CONNECTION_STATUS_CHANGED":
               toast.info(notification.message, {
                 duration: 3000,
@@ -166,11 +209,23 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
       client.onStompError = (frame) => {
         console.error("STOMP error:", frame);
         setIsConnected(false);
+
+        // Reconnect with a fresh token after error
+        reconnectTimeoutRef.current = setTimeout(() => {
+          console.log("Reconnecting after STOMP error...");
+          connect();
+        }, 5000);
       };
 
       client.onWebSocketClose = () => {
         console.log("WebSocket disconnected");
         setIsConnected(false);
+
+        // Reconnect with a fresh token after disconnect
+        reconnectTimeoutRef.current = setTimeout(() => {
+          console.log("Reconnecting after disconnect...");
+          connect();
+        }, 5000);
       };
 
       client.activate();
@@ -192,6 +247,9 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
     return () => {
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
+      }
+      if (tokenRefreshIntervalRef.current) {
+        clearInterval(tokenRefreshIntervalRef.current);
       }
       if (clientRef.current) {
         clientRef.current.deactivate();
@@ -249,6 +307,10 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
     setUnreadCount(0);
   }, []);
 
+  const clearMessagesCount = useCallback(() => {
+    setUnreadMessagesCount(0);
+  }, []);
+
   return (
     <WebSocketContext.Provider
       value={{
@@ -257,6 +319,8 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
         subscribeToConnection,
         clearNotifications,
         unreadCount,
+        unreadMessagesCount,
+        clearMessagesCount,
       }}
     >
       {children}

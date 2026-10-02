@@ -2,11 +2,13 @@
 
 import { useState, useEffect } from "react";
 import * as nsfwjs from "nsfwjs";
-import { getImageKitAuth } from "@/lib/supabase/queries";
+import { useAuth } from "@/lib/contexts/AuthContext";
+import { uploadPosterImage } from "@/lib/supabase/queries";
 import { Upload, Image as ImageIcon, CheckCircle, Loader2, X } from "lucide-react";
 
 interface ImageUploadProps {
-  onUploadSuccess: (url: string) => void;
+  // Receives the image's path in the post-images storage bucket.
+  onUploadSuccess: (path: string) => void;
 }
 
 let modelPromise: Promise<nsfwjs.NSFWJS>;
@@ -27,6 +29,7 @@ const loadImage = (src: string): Promise<HTMLImageElement> =>
   });
 
 export default function ImageUpload({ onUploadSuccess }: ImageUploadProps) {
+  const { user } = useAuth();
   const [status, setStatus] = useState<
     "idle" | "moderating" | "uploading" | "success"
   >("idle");
@@ -78,38 +81,15 @@ export default function ImageUpload({ onUploadSuccess }: ImageUploadProps) {
   };
 
   const handleUpload = async () => {
-    if (!file) return;
+    if (!file || !user) return;
 
     setStatus("uploading");
     try {
-      const auth = await getImageKitAuth();
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("fileName", "poster.jpg");
-      formData.append(
-        "publicKey",
-        process.env.NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY!,
-      );
-      formData.append("signature", auth.signature);
-      formData.append("expire", String(auth.expire));
-      formData.append("token", auth.token);
-
-      const res = await fetch(
-        "https://upload.imagekit.io/api/v1/files/upload",
-        {
-          method: "POST",
-          body: formData,
-        },
-      );
-
-      if (!res.ok) throw new Error("Upload failed");
-      const data = await res.json();
-
+      const path = await uploadPosterImage(user.id, file);
       setStatus("success");
-      onUploadSuccess(data.url);
-    } catch (err) {
-      console.error("Upload error:", err);
-      setError("Upload failed. Please try again.");
+      onUploadSuccess(path);
+    } catch (err: any) {
+      setError(err.message || "Upload failed. Please try again.");
       setStatus("idle");
     }
   };

@@ -15,7 +15,7 @@ export default function CreateOfferForm({
   const [description, setDescription] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [posterImageUrl, setPosterImageUrl] = useState<string | null>(null);
+  const [posterImagePath, setPosterImagePath] = useState<string | null>(null);
   const [type, setType] = useState<"OFFER" | "ASK">("OFFER"); // default OFFER
 
   const [imageUploadKey, setImageUploadKey] = useState(Date.now());
@@ -26,13 +26,12 @@ export default function CreateOfferForm({
     setError(null);
 
     try {
-      // Moderated server-side by the create-post edge function
-      await createPost({ title, description, posterImageUrl, type });
+      await createPost({ title, description, posterImagePath, type });
 
       toast.success(`${type === "OFFER" ? "Offer" : "Request"} created successfully!`);
       setTitle("");
       setDescription("");
-      setPosterImageUrl(null);
+      setPosterImagePath(null);
       setType("OFFER"); // reset to default
       setImageUploadKey(Date.now());
       onPostSuccess();
@@ -90,7 +89,7 @@ export default function CreateOfferForm({
 
       <ImageUpload
         key={imageUploadKey}
-        onUploadSuccess={(url) => setPosterImageUrl(url)}
+        onUploadSuccess={(path) => setPosterImagePath(path)}
       />
 
       {/* Title Input */}

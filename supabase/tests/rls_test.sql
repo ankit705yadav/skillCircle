@@ -1,6 +1,6 @@
 -- Access-control tests for the SkillCircle schema. Run with `supabase test db`.
 begin;
-select plan(26);
+select plan(32);
 
 -- Users: A authors a post, B requests it, C is an outsider.
 insert into auth.users (id, email) values
@@ -25,11 +25,51 @@ insert into public.user_locations (user_id, location) values
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"bbbbbbbb-0000-0000-0000-000000000000","role":"authenticated"}', true);
 
+insert into public.skill_posts (type, title, description) values ('ASK', 'Need a tutor', 'Calculus');
+select is(
+  (select author_id::text from public.skill_posts where title = 'Need a tutor'),
+  'bbbbbbbb-0000-0000-0000-000000000000',
+  'clients can create posts, authored by themselves'
+);
+
 select throws_ok(
   $$ insert into public.skill_posts (author_id, type, title, description)
-     values ('bbbbbbbb-0000-0000-0000-000000000000', 'ASK', 'x', 'y') $$,
+     values ('aaaaaaaa-0000-0000-0000-000000000000', 'ASK', 'x', 'y') $$,
   '42501', null,
-  'clients cannot insert posts directly (moderation bypass)'
+  'clients cannot post as someone else'
+);
+
+select throws_ok(
+  $$ insert into public.skill_posts (type, title, description, archived)
+     values ('ASK', 'x', 'y', true) $$,
+  '42501', null,
+  'clients cannot set server-managed columns on insert'
+);
+
+select throws_ok(
+  $$ insert into public.skill_posts (type, title, description, poster_image_path)
+     values ('ASK', 'x', 'y', 'aaaaaaaa-0000-0000-0000-000000000000/poster.png') $$,
+  '42501', null,
+  'posters must come from the author''s own storage folder'
+);
+
+select lives_ok(
+  $$ insert into public.skill_posts (type, title, description, poster_image_path)
+     values ('OFFER', 'Chess coaching', 'Openings', 'bbbbbbbb-0000-0000-0000-000000000000/poster.png') $$,
+  'posters from the author''s own folder are accepted'
+);
+
+select lives_ok(
+  $$ insert into storage.objects (bucket_id, name)
+     values ('post-images', 'bbbbbbbb-0000-0000-0000-000000000000/poster.png') $$,
+  'users can upload images into their own folder'
+);
+
+select throws_ok(
+  $$ insert into storage.objects (bucket_id, name)
+     values ('post-images', 'aaaaaaaa-0000-0000-0000-000000000000/evil.png') $$,
+  '42501', null,
+  'users cannot upload into someone else''s folder'
 );
 
 select is(
@@ -189,7 +229,7 @@ select set_config('request.jwt.claims', '{"role":"anon"}', true);
 
 select is(
   (public.app_stats() ->> 'totalPosts')::int,
-  1,
+  3,
   'anonymous visitors can read community stats'
 );
 

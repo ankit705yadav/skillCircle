@@ -1,4 +1,4 @@
-import { FunctionsHttpError, type PostgrestError } from "@supabase/supabase-js";
+import type { PostgrestError } from "@supabase/supabase-js";
 import { getSupabase } from "./client";
 import type { Database } from "./database.types";
 
@@ -50,9 +50,31 @@ export interface AppStats {
 }
 
 const AUTHOR = "id, username";
-const POST_SELECT = `id, title, description, type, posterImageUrl:poster_image_url, archived, createdAt:created_at, author:profiles!author_id(${AUTHOR})`;
+const POST_SELECT = `id, title, description, type, posterImagePath:poster_image_path, archived, createdAt:created_at, author:profiles!author_id(${AUTHOR})`;
 const CONNECTION_SELECT = `id, status, createdAt:created_at, acceptedAt:accepted_at, skillPost:skill_posts!skill_post_id(${POST_SELECT}), requester:profiles!requester_id(${AUTHOR}), approver:profiles!approver_id(${AUTHOR})`;
 const MESSAGE_SELECT = `id, content, timestamp:created_at, connectionId:connection_id, sender:profiles!sender_id(${AUTHOR})`;
+
+const POST_IMAGES_BUCKET = "post-images";
+
+// Rows as selected; posters are stored as paths in the post-images bucket.
+type PostRow = Omit<SkillPost, "posterImageUrl"> & {
+  posterImagePath: string | null;
+};
+type ConnectionRow = Omit<Connection, "skillPost"> & { skillPost: PostRow };
+
+function toSkillPost({ posterImagePath, ...post }: PostRow): SkillPost {
+  return {
+    ...post,
+    posterImageUrl: posterImagePath
+      ? getSupabase().storage.from(POST_IMAGES_BUCKET).getPublicUrl(posterImagePath)
+          .data.publicUrl
+      : null,
+  };
+}
+
+function toConnection(row: ConnectionRow): Connection {
+  return { ...row, skillPost: toSkillPost(row.skillPost) };
+}
 
 // Turns Postgres/PostgREST errors into messages fit for a toast.
 function toError(error: PostgrestError, fallback: string): Error {
@@ -62,6 +84,9 @@ function toError(error: PostgrestError, fallback: string): Error {
         ? "You've already sent a request for this post."
         : error.message,
     );
+  }
+  if (error.code === "23514") {
+    return new Error("Some fields are empty or too long.");
   }
   if (error.code === "42501") {
     return new Error("You're not allowed to do that.");
@@ -74,19 +99,6 @@ function toError(error: PostgrestError, fallback: string): Error {
   return new Error(fallback);
 }
 
-async function functionError(error: unknown, fallback: string): Promise<Error> {
-  if (error instanceof FunctionsHttpError) {
-    try {
-      const body = await error.context.json();
-      if (body?.error) return new Error(body.error);
-    } catch {
-      // fall through to the generic message
-    }
-  }
-  console.error(fallback, error);
-  return new Error(fallback);
-}
-
 // ---------------------------------------------------------------- posts
 
 export async function fetchNearbyPosts(lat: number, lon: number) {
@@ -94,7 +106,7 @@ export async function fetchNearbyPosts(lat: number, lon: number) {
     .rpc("nearby_posts", { lat, lon })
     .select(POST_SELECT);
   if (error) throw toError(error, "Failed to load nearby skills");
-  return data as unknown as SkillPost[];
+  return (data as unknown as PostRow[]).map(toSkillPost);
 }
 
 export async function fetchMyPosts(userId: string) {
@@ -104,7 +116,7 @@ export async function fetchMyPosts(userId: string) {
     .eq("author_id", userId)
     .order("created_at", { ascending: false });
   if (error) throw toError(error, "Failed to load your skills");
-  return data as unknown as SkillPost[];
+  return (data as unknown as PostRow[]).map(toSkillPost);
 }
 
 export async function archivePost(postId: number) {
@@ -121,21 +133,36 @@ export async function createPost(input: {
   title: string;
   description: string;
   type: PostType;
-  posterImageUrl: string | null;
+  posterImagePath: string | null;
 }) {
-  const { data, error } = await getSupabase().functions.invoke("create-post", {
-    body: input,
-  });
-  if (error) throw await functionError(error, "Failed to create post");
-  return data as SkillPost;
+  // author_id defaults to auth.uid(); RLS requires the poster to be in the
+  // author's own storage folder.
+  const { data, error } = await getSupabase()
+    .from("skill_posts")
+    .insert({
+      title: input.title.trim(),
+      description: input.description.trim(),
+      type: input.type,
+      poster_image_path: input.posterImagePath,
+    })
+    .select(POST_SELECT)
+    .single();
+  if (error) throw toError(error, "Failed to create post");
+  return toSkillPost(data as unknown as PostRow);
 }
 
-export async function getImageKitAuth() {
-  const { data, error } = await getSupabase().functions.invoke("imagekit-auth", {
-    method: "GET",
-  });
-  if (error) throw await functionError(error, "Image upload authentication failed");
-  return data as { token: string; expire: number; signature: string };
+// Uploads into `<userId>/` in the post-images bucket and returns the path.
+export async function uploadPosterImage(userId: string, file: File) {
+  const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
+  const path = `${userId}/${crypto.randomUUID()}.${extension}`;
+  const { error } = await getSupabase()
+    .storage.from(POST_IMAGES_BUCKET)
+    .upload(path, file, { contentType: file.type, cacheControl: "31536000" });
+  if (error) {
+    console.error("Image upload failed", error);
+    throw new Error(`Upload failed: ${error.message}`);
+  }
+  return path;
 }
 
 // ---------------------------------------------------------------- connections
@@ -156,7 +183,7 @@ export async function fetchConnection(connectionId: number) {
     .eq("id", connectionId)
     .maybeSingle();
   if (error) throw toError(error, "Failed to load connection");
-  return data as unknown as Connection | null;
+  return data ? toConnection(data as unknown as ConnectionRow) : null;
 }
 
 export async function fetchPendingRequests(userId: string) {
@@ -167,7 +194,7 @@ export async function fetchPendingRequests(userId: string) {
     .eq("status", "PENDING")
     .order("created_at", { ascending: false });
   if (error) throw toError(error, "Failed to load connection requests");
-  return data as unknown as Connection[];
+  return (data as unknown as ConnectionRow[]).map(toConnection);
 }
 
 export async function respondToRequest(
@@ -191,7 +218,7 @@ export async function fetchActiveConnections() {
     .eq("status", "ACCEPTED")
     .order("accepted_at", { ascending: false });
   if (error) throw toError(error, "Failed to load conversations");
-  return data as unknown as Connection[];
+  return (data as unknown as ConnectionRow[]).map(toConnection);
 }
 
 // ---------------------------------------------------------------- messages

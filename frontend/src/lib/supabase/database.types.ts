@@ -94,13 +94,13 @@ isOneToOne: false
                   ]
                 },"skill_posts": {
                   Row: {
-                    "archived": boolean,"author_id": string,"created_at": string,"description": string,"id": number,"poster_image_url": string | null,"title": string,"type": Database["public"]['Enums']["post_type"]
+                    "archived": boolean,"author_id": string,"created_at": string,"description": string,"id": number,"poster_image_path": string | null,"title": string,"type": Database["public"]['Enums']["post_type"]
                   }
                   Insert: {
-                    "archived"?: boolean,"author_id": string,"created_at"?: string,"description": string,"id"?: never,"poster_image_url"?: string | null,"title": string,"type": Database["public"]['Enums']["post_type"]
+                    "archived"?: boolean,"author_id"?: string,"created_at"?: string,"description": string,"id"?: never,"poster_image_path"?: string | null,"title": string,"type": Database["public"]['Enums']["post_type"]
                   }
                   Update: {
-                    "archived"?: boolean,"author_id"?: string,"created_at"?: string,"description"?: string,"id"?: never,"poster_image_url"?: string | null,"title"?: string,"type"?: Database["public"]['Enums']["post_type"]
+                    "archived"?: boolean,"author_id"?: string,"created_at"?: string,"description"?: string,"id"?: never,"poster_image_path"?: string | null,"title"?: string,"type"?: Database["public"]['Enums']["post_type"]
                   }
                   Relationships: [
                     {
@@ -155,7 +155,7 @@ isOneToOne: true
 "created_at": string,
 "description": string,
 "id": number,
-"poster_image_url": string | null,
+"poster_image_path": string | null,
 "title": string,
 "type": Database["public"]['Enums']["post_type"]
             }[]

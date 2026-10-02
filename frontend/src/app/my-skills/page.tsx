@@ -1,53 +1,32 @@
 "use client";
 
-import { useAuth } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { FileText, Archive, Inbox, Loader2 } from "lucide-react";
-
-interface Skill {
-  id: number;
-  title: string;
-  description: string;
-  type: "OFFER" | "ASK";
-  posterImageUrl?: string;
-  archived: boolean;
-}
+import { FileText, Archive, Inbox } from "lucide-react";
+import { useAuth } from "@/lib/contexts/AuthContext";
+import {
+  archivePost,
+  fetchMyPosts,
+  type SkillPost,
+} from "@/lib/supabase/queries";
 
 export default function MySkillsPage() {
-  const { getToken } = useAuth();
-  const [mySkills, setMySkills] = useState<Skill[]>([]);
+  const { user } = useAuth();
+  const userId = user?.id;
+  const [mySkills, setMySkills] = useState<SkillPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchMySkills = async () => {
-      const token = await getToken();
-      if (!token) {
-        setIsLoading(false);
-        return;
-      }
-      try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/skills/my-skills`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          },
-        );
-        if (response.ok) {
-          const data = await response.json();
-          setMySkills(data);
-        } else {
-          setError("Failed to load your skills.");
-        }
-      } catch (err) {
-        setError("An error occurred while fetching your skills.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchMySkills();
-  }, [getToken]);
+    if (!userId) {
+      setIsLoading(false);
+      return;
+    }
+    fetchMyPosts(userId)
+      .then(setMySkills)
+      .catch(() => setError("Failed to load your skills."))
+      .finally(() => setIsLoading(false));
+  }, [userId]);
 
   const handleArchive = async (skillId: number) => {
     const confirmed = window.confirm(
@@ -58,22 +37,9 @@ export default function MySkillsPage() {
       return;
     }
 
-    const token = await getToken();
-
     toast.promise(
       (async () => {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/skills/${skillId}/archive`,
-          {
-            method: "POST",
-            headers: { Authorization: `Bearer ${token}` },
-          },
-        );
-
-        if (!response.ok) {
-          const errData = await response.json();
-          throw new Error(errData.error || "Failed to archive post");
-        }
+        await archivePost(skillId);
 
         // ✅ Update the post's state instead of removing it
         setMySkills((prevSkills) =>

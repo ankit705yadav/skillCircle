@@ -1,34 +1,23 @@
 "use client";
 
-import { useAuth } from "@clerk/nextjs";
 import { useState } from "react";
 import { toast } from "sonner";
 import SkillCard from "./skillCard/SkillCard";
+import { requestConnection, type SkillPost } from "@/lib/supabase/queries";
 
-export default function NearbySkills({ skills, isLoading, user }) {
-  const { getToken } = useAuth();
-  const [selectedSkill, setSelectedSkill] = useState<any | null>(null);
+// Posts arrive pre-filtered: active posts by other users only.
+export default function NearbySkills({
+  skills,
+  isLoading,
+}: {
+  skills: SkillPost[];
+  isLoading: boolean;
+}) {
+  const [selectedSkill, setSelectedSkill] = useState<SkillPost | null>(null);
 
   const handleRequestConnection = async (skillId: number) => {
-    const token = await getToken();
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/connections`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ skillPostId: skillId }),
-        },
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to send request.");
-      }
-
+      await requestConnection(skillId);
       toast.success("Request sent successfully!");
       setSelectedSkill(null); // close modal after request
     } catch (error: any) {
@@ -58,10 +47,7 @@ export default function NearbySkills({ skills, isLoading, user }) {
             <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
               {
                 skills.filter(
-                  (skill) =>
-                    skill.type === "OFFER" &&
-                    skill.archived === false &&
-                    user?.id !== skill.author.clerkUserId,
+                  (skill) => skill.type === "OFFER",
                 ).length
               }
             </span>
@@ -70,33 +56,21 @@ export default function NearbySkills({ skills, isLoading, user }) {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {skills
               .filter(
-                (skill) =>
-                  skill.type === "OFFER" &&
-                  skill.archived === false &&
-                  user?.id !== skill.author.clerkUserId,
+                (skill) => skill.type === "OFFER",
               )
-              .map((skill: any) => (
+              .map((skill) => (
                 <div
                   key={skill.id}
                   onClick={() => setSelectedSkill(skill)}
                   className="cursor-pointer transform transition-transform duration-200 hover:scale-105"
                 >
-                  <SkillCard
-                    skill={skill}
-                    user={user}
-                    handleRequestConnection={() =>
-                      handleRequestConnection(skill.id)
-                    }
-                  />
+                  <SkillCard skill={skill} />
                 </div>
               ))}
           </div>
 
           {skills.filter(
-            (skill) =>
-              skill.type === "OFFER" &&
-              skill.archived === false &&
-              user?.id !== skill.author.clerkUserId,
+            (skill) => skill.type === "OFFER",
           ).length === 0 && (
             <p className="text-gray-500 text-center py-8">
               No offers available nearby
@@ -113,10 +87,7 @@ export default function NearbySkills({ skills, isLoading, user }) {
             <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
               {
                 skills.filter(
-                  (skill) =>
-                    skill.type === "ASK" &&
-                    skill.archived === false &&
-                    user?.id !== skill.author.clerkUserId,
+                  (skill) => skill.type === "ASK",
                 ).length
               }
             </span>
@@ -125,33 +96,21 @@ export default function NearbySkills({ skills, isLoading, user }) {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {skills
               .filter(
-                (skill) =>
-                  skill.type === "ASK" &&
-                  skill.archived === false &&
-                  user?.id !== skill.author.clerkUserId,
+                (skill) => skill.type === "ASK",
               )
-              .map((skill: any) => (
+              .map((skill) => (
                 <div
                   key={skill.id}
                   onClick={() => setSelectedSkill(skill)}
                   className="cursor-pointer transform transition-transform duration-200 hover:scale-105"
                 >
-                  <SkillCard
-                    skill={skill}
-                    user={user}
-                    handleRequestConnection={() =>
-                      handleRequestConnection(skill.id)
-                    }
-                  />
+                  <SkillCard skill={skill} />
                 </div>
               ))}
           </div>
 
           {skills.filter(
-            (skill) =>
-              skill.type === "ASK" &&
-              skill.archived === false &&
-              user?.id !== skill.author.clerkUserId,
+            (skill) => skill.type === "ASK",
           ).length === 0 && (
             <p className="text-gray-500 text-center py-8">
               No requests available nearby

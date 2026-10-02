@@ -1,6 +1,5 @@
 "use client";
 
-import { useAuth, useUser } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -11,27 +10,14 @@ import {
   Briefcase,
   BookOpen,
 } from "lucide-react";
-import { useWebSocket } from "@/lib/contexts/WebSocketContext";
-
-interface Author {
-  clerkUserId: string;
-  username: string;
-}
-interface SkillPost {
-  id: number;
-  title: string;
-  description: string;
-  type: string;
-  posterImageUrl?: string;
-}
-interface Connection {
-  id: number;
-  skillPost: SkillPost;
-  requester: Author;
-  approver: Author;
-  createdAt: string;
-  acceptedAt: string;
-}
+import { toast } from "sonner";
+import { useAuth } from "@/lib/contexts/AuthContext";
+import { useRealtime } from "@/lib/contexts/RealtimeContext";
+import {
+  fetchActiveConnections,
+  type Author,
+  type Connection,
+} from "@/lib/supabase/queries";
 
 interface GroupedChat {
   otherUser: Author;
@@ -40,10 +26,9 @@ interface GroupedChat {
 }
 
 export default function ChatsPage() {
-  const { getToken } = useAuth();
-  const { user } = useUser();
+  const { user } = useAuth();
   const router = useRouter();
-  const { clearMessagesCount } = useWebSocket();
+  const { clearMessagesCount } = useRealtime();
   const [groupedChats, setGroupedChats] = useState<GroupedChat[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -53,74 +38,61 @@ export default function ChatsPage() {
   }, [clearMessagesCount]);
 
   useEffect(() => {
-    const fetchActiveConnections = async () => {
-      const token = await getToken();
-      if (!token) {
-        setIsLoading(false);
-        return;
-      }
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
 
+    const loadConversations = async () => {
       try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/connections/active`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          },
-        );
-        if (response.ok) {
-          const data = await response.json();
+        const data = await fetchActiveConnections();
+        // Group connections by other user
+        const grouped = new Map<string, GroupedChat>();
 
-          // Group connections by other user
-          const grouped = new Map<string, GroupedChat>();
+        data.forEach((connection) => {
+          const otherUser =
+            user.id === connection.requester.id
+              ? connection.approver
+              : connection.requester;
 
-          data.forEach((connection: Connection) => {
-            const otherUser =
-              user?.id === connection.requester.clerkUserId
-                ? connection.approver
-                : connection.requester;
+          const userId = otherUser.id;
 
-            const userId = otherUser.clerkUserId;
-
-            if (grouped.has(userId)) {
-              const existing = grouped.get(userId)!;
-              existing.connections.push(connection);
-              // Update latest accepted date if this one is more recent
-              if (
-                new Date(connection.acceptedAt) >
-                new Date(existing.latestAcceptedAt)
-              ) {
-                existing.latestAcceptedAt = connection.acceptedAt;
-              }
-            } else {
-              grouped.set(userId, {
-                otherUser,
-                connections: [connection],
-                latestAcceptedAt: connection.acceptedAt,
-              });
+          if (grouped.has(userId)) {
+            const existing = grouped.get(userId)!;
+            existing.connections.push(connection);
+            // Update latest accepted date if this one is more recent
+            const acceptedAt = connection.acceptedAt ?? connection.createdAt;
+            if (new Date(acceptedAt) > new Date(existing.latestAcceptedAt)) {
+              existing.latestAcceptedAt = acceptedAt;
             }
-          });
+          } else {
+            grouped.set(userId, {
+              otherUser,
+              connections: [connection],
+              latestAcceptedAt: connection.acceptedAt ?? connection.createdAt,
+            });
+          }
+        });
 
-          // Convert to array and sort by latest accepted date
-          const groupedArray = Array.from(grouped.values()).sort(
-            (a, b) =>
-              new Date(b.latestAcceptedAt).getTime() -
-              new Date(a.latestAcceptedAt).getTime(),
-          );
+        // Convert to array and sort by latest accepted date
+        const groupedArray = Array.from(grouped.values()).sort(
+          (a, b) =>
+            new Date(b.latestAcceptedAt).getTime() -
+            new Date(a.latestAcceptedAt).getTime(),
+        );
 
-          setGroupedChats(groupedArray);
-        }
-      } catch (error) {
-        console.error("Failed to fetch active connections:", error);
+        setGroupedChats(groupedArray);
+      } catch (error: any) {
+        toast.error(error.message);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchActiveConnections();
-  }, [getToken, user?.id]);
+    loadConversations();
+  }, [user]);
 
   const handleChatClick = (otherUserId: string) => {
-    console.log("Navigating to chat with user:", otherUserId);
     router.push(`/chats/${encodeURIComponent(otherUserId)}`);
   };
 
@@ -174,9 +146,9 @@ export default function ChatsPage() {
           <div className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
             {groupedChats.map((chat, index) => {
               return (
-                <div key={chat.otherUser.clerkUserId}>
+                <div key={chat.otherUser.id}>
                   <button
-                    onClick={() => handleChatClick(chat.otherUser.clerkUserId)}
+                    onClick={() => handleChatClick(chat.otherUser.id)}
                     className="w-full px-6 py-4 hover:bg-gray-50 transition-colors text-left group"
                   >
                     <div className="flex items-center gap-4">
@@ -204,8 +176,8 @@ export default function ChatsPage() {
                           // Sort connections by acceptedAt to get the latest
                           const latestConnection = [...chat.connections].sort(
                             (a, b) =>
-                              new Date(b.acceptedAt).getTime() -
-                              new Date(a.acceptedAt).getTime(),
+                              new Date(b.acceptedAt ?? 0).getTime() -
+                              new Date(a.acceptedAt ?? 0).getTime(),
                           )[0];
 
                           return (

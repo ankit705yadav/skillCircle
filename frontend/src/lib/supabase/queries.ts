@@ -1,0 +1,253 @@
+import { FunctionsHttpError, type PostgrestError } from "@supabase/supabase-js";
+import { getSupabase } from "./client";
+import type { Database } from "./database.types";
+
+// Data access for the app. Selects alias snake_case columns to the camelCase
+// shapes the UI uses, and RLS on every table decides what each user can see.
+
+export type PostType = "OFFER" | "ASK";
+
+export interface Author {
+  id: string;
+  username: string | null;
+}
+
+export interface SkillPost {
+  id: number;
+  title: string;
+  description: string;
+  type: PostType;
+  posterImageUrl: string | null;
+  archived: boolean;
+  createdAt: string;
+  author: Author;
+}
+
+export interface Connection {
+  id: number;
+  status: "PENDING" | "ACCEPTED" | "REJECTED" | "COMPLETED";
+  createdAt: string;
+  acceptedAt: string | null;
+  skillPost: SkillPost;
+  requester: Author;
+  approver: Author;
+}
+
+export interface Message {
+  id: number;
+  content: string;
+  timestamp: string;
+  connectionId: number;
+  sender: Author;
+}
+
+export interface AppStats {
+  totalUsers: number;
+  totalConnections: number;
+  activeConnections: number;
+  totalPosts: number;
+  activePosts: number;
+}
+
+const AUTHOR = "id, username";
+const POST_SELECT = `id, title, description, type, posterImageUrl:poster_image_url, archived, createdAt:created_at, author:profiles!author_id(${AUTHOR})`;
+const CONNECTION_SELECT = `id, status, createdAt:created_at, acceptedAt:accepted_at, skillPost:skill_posts!skill_post_id(${POST_SELECT}), requester:profiles!requester_id(${AUTHOR}), approver:profiles!approver_id(${AUTHOR})`;
+const MESSAGE_SELECT = `id, content, timestamp:created_at, connectionId:connection_id, sender:profiles!sender_id(${AUTHOR})`;
+
+// Turns Postgres/PostgREST errors into messages fit for a toast.
+function toError(error: PostgrestError, fallback: string): Error {
+  if (error.code === "23505") {
+    return new Error(
+      error.message.includes("connections_one_open_request_idx")
+        ? "You've already sent a request for this post."
+        : error.message,
+    );
+  }
+  if (error.code === "42501") {
+    return new Error("You're not allowed to do that.");
+  }
+  // Messages raised by our own functions/triggers are user-facing.
+  if (error.code?.startsWith("P0") || error.code === "22023") {
+    return new Error(error.message);
+  }
+  console.error(fallback, error);
+  return new Error(fallback);
+}
+
+async function functionError(error: unknown, fallback: string): Promise<Error> {
+  if (error instanceof FunctionsHttpError) {
+    try {
+      const body = await error.context.json();
+      if (body?.error) return new Error(body.error);
+    } catch {
+      // fall through to the generic message
+    }
+  }
+  console.error(fallback, error);
+  return new Error(fallback);
+}
+
+// ---------------------------------------------------------------- posts
+
+export async function fetchNearbyPosts(lat: number, lon: number) {
+  const { data, error } = await getSupabase()
+    .rpc("nearby_posts", { lat, lon })
+    .select(POST_SELECT);
+  if (error) throw toError(error, "Failed to load nearby skills");
+  return data as unknown as SkillPost[];
+}
+
+export async function fetchMyPosts(userId: string) {
+  const { data, error } = await getSupabase()
+    .from("skill_posts")
+    .select(POST_SELECT)
+    .eq("author_id", userId)
+    .order("created_at", { ascending: false });
+  if (error) throw toError(error, "Failed to load your skills");
+  return data as unknown as SkillPost[];
+}
+
+export async function archivePost(postId: number) {
+  const { data, error } = await getSupabase()
+    .from("skill_posts")
+    .update({ archived: true })
+    .eq("id", postId)
+    .select("id");
+  if (error) throw toError(error, "Failed to archive post");
+  if (data.length === 0) throw new Error("You can only archive your own posts.");
+}
+
+export async function createPost(input: {
+  title: string;
+  description: string;
+  type: PostType;
+  posterImageUrl: string | null;
+}) {
+  const { data, error } = await getSupabase().functions.invoke("create-post", {
+    body: input,
+  });
+  if (error) throw await functionError(error, "Failed to create post");
+  return data as SkillPost;
+}
+
+export async function getImageKitAuth() {
+  const { data, error } = await getSupabase().functions.invoke("imagekit-auth", {
+    method: "GET",
+  });
+  if (error) throw await functionError(error, "Image upload authentication failed");
+  return data as { token: string; expire: number; signature: string };
+}
+
+// ---------------------------------------------------------------- connections
+
+export async function requestConnection(skillPostId: number) {
+  // requester_id defaults to auth.uid(); approver_id is set by a trigger
+  // from the post's author, so the client only sends the post id.
+  const row = { skill_post_id: skillPostId } as
+    Database["public"]["Tables"]["connections"]["Insert"];
+  const { error } = await getSupabase().from("connections").insert(row);
+  if (error) throw toError(error, "Failed to send connection request");
+}
+
+export async function fetchConnection(connectionId: number) {
+  const { data, error } = await getSupabase()
+    .from("connections")
+    .select(CONNECTION_SELECT)
+    .eq("id", connectionId)
+    .maybeSingle();
+  if (error) throw toError(error, "Failed to load connection");
+  return data as unknown as Connection | null;
+}
+
+export async function fetchPendingRequests(userId: string) {
+  const { data, error } = await getSupabase()
+    .from("connections")
+    .select(CONNECTION_SELECT)
+    .eq("approver_id", userId)
+    .eq("status", "PENDING")
+    .order("created_at", { ascending: false });
+  if (error) throw toError(error, "Failed to load connection requests");
+  return data as unknown as Connection[];
+}
+
+export async function respondToRequest(
+  connectionId: number,
+  status: "ACCEPTED" | "REJECTED",
+) {
+  const { data, error } = await getSupabase()
+    .from("connections")
+    .update({ status })
+    .eq("id", connectionId)
+    .select("id");
+  if (error) throw toError(error, "Failed to update request");
+  if (data.length === 0) throw new Error("Request not found.");
+}
+
+export async function fetchActiveConnections() {
+  // RLS limits this to connections the current user is part of.
+  const { data, error } = await getSupabase()
+    .from("connections")
+    .select(CONNECTION_SELECT)
+    .eq("status", "ACCEPTED")
+    .order("accepted_at", { ascending: false });
+  if (error) throw toError(error, "Failed to load conversations");
+  return data as unknown as Connection[];
+}
+
+// ---------------------------------------------------------------- messages
+
+export async function fetchMessages(connectionIds: number[]) {
+  const { data, error } = await getSupabase()
+    .from("messages")
+    .select(MESSAGE_SELECT)
+    .in("connection_id", connectionIds)
+    .order("created_at", { ascending: true });
+  if (error) throw toError(error, "Failed to load messages");
+  return data as unknown as Message[];
+}
+
+export async function sendMessage(connectionId: number, content: string) {
+  const { data, error } = await getSupabase()
+    .from("messages")
+    .insert({ connection_id: connectionId, content })
+    .select(MESSAGE_SELECT)
+    .single();
+  if (error) throw toError(error, "Failed to send message");
+  return data as unknown as Message;
+}
+
+// ---------------------------------------------------------------- users
+
+export async function fetchProfile(userId: string) {
+  const { data, error } = await getSupabase()
+    .from("profiles")
+    .select(AUTHOR)
+    .eq("id", userId)
+    .maybeSingle();
+  if (error) throw toError(error, "Failed to load profile");
+  return data as Author | null;
+}
+
+export async function setMyLocation(lat: number, lon: number) {
+  const { error } = await getSupabase().rpc("set_my_location", { lat, lon });
+  if (error) throw toError(error, "Failed to update location");
+}
+
+export async function generateUsernames() {
+  const { data, error } = await getSupabase().rpc("generate_usernames");
+  if (error) throw toError(error, "Could not load username options");
+  return data;
+}
+
+export async function claimUsername(username: string) {
+  const { error } = await getSupabase().rpc("claim_username", {
+    p_username: username,
+  });
+  if (error) throw toError(error, "Could not claim that username");
+}
+
+export async function fetchStats() {
+  const { data, error } = await getSupabase().rpc("app_stats");
+  if (error) throw toError(error, "Failed to load stats");
+  return data as unknown as AppStats;
+}

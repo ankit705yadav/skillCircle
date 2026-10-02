@@ -1,83 +1,73 @@
 "use client";
 
-import { useAuth } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Bell, Check, X, UserPlus, Inbox, Wifi, WifiOff } from "lucide-react";
-import { useWebSocket } from "@/lib/contexts/WebSocketContext";
+import { useAuth } from "@/lib/contexts/AuthContext";
+import { useRealtime } from "@/lib/contexts/RealtimeContext";
+import {
+  fetchPendingRequests,
+  respondToRequest,
+  type Connection,
+} from "@/lib/supabase/queries";
 
 export default function NotificationsPage() {
-  const { getToken } = useAuth();
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const { user } = useAuth();
+  const userId = user?.id;
+  const [notifications, setNotifications] = useState<Connection[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const {
-    notifications: wsNotifications,
+    notifications: liveNotifications,
     clearNotifications,
     isConnected,
-  } = useWebSocket();
+  } = useRealtime();
 
   useEffect(() => {
-    const fetchNotifications = async () => {
-      const token = await getToken();
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/connections/notifications`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      );
-      if (response.ok) {
-        const data = await response.json();
-        setNotifications(data);
-      }
+    if (!userId) {
       setIsLoading(false);
-    };
-    fetchNotifications();
+      return;
+    }
+    fetchPendingRequests(userId)
+      .then(setNotifications)
+      .catch((error) => toast.error(error.message))
+      .finally(() => setIsLoading(false));
 
-    // Clear WebSocket notifications when user views this page
+    // Clear live notifications when user views this page
     clearNotifications();
-  }, [getToken, clearNotifications]);
+  }, [userId, clearNotifications]);
 
-  // Listen for real-time WebSocket notifications
+  // Apply real-time updates, oldest first so a later status change wins
   useEffect(() => {
-    wsNotifications.forEach((wsNotif) => {
-      if (wsNotif.type === "CONNECTION_REQUEST") {
+    [...liveNotifications].reverse().forEach((live) => {
+      if (live.type === "CONNECTION_REQUEST") {
         // Add new connection request to the list in real-time
         setNotifications((prev) => {
           // Check if notification already exists to avoid duplicates
-          if (prev.some((n) => n.id === wsNotif.data.id)) {
+          if (prev.some((n) => n.id === live.connection.id)) {
             return prev;
           }
-          // Don't show toast here - it's already shown globally by WebSocketContext
-          return [wsNotif.data, ...prev];
+          // Don't show toast here - it's already shown globally by RealtimeContext
+          return [live.connection, ...prev];
         });
-      } else if (wsNotif.type === "CONNECTION_STATUS_CHANGED") {
+      } else if (live.type === "CONNECTION_STATUS_CHANGED") {
         // Remove notification if connection status changed (accepted/rejected elsewhere)
         setNotifications((prev) =>
-          prev.filter((n) => n.id !== wsNotif.entityId),
+          prev.filter((n) => n.id !== live.connectionId),
         );
       }
     });
-  }, [wsNotifications]);
+  }, [liveNotifications]);
 
   const handleResponse = async (
     connectionId: number,
     action: "accept" | "reject",
   ) => {
-    const token = await getToken();
-
     toast.promise(
       (async () => {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/connections/${connectionId}/${action}`,
-          {
-            method: "POST",
-            headers: { Authorization: `Bearer ${token}` },
-          },
+        await respondToRequest(
+          connectionId,
+          action === "accept" ? "ACCEPTED" : "REJECTED",
         );
-
-        if (!response.ok) {
-          throw new Error(`Failed to ${action} request`);
-        }
 
         // Remove the handled notification from the list
         setNotifications((prev) =>
@@ -175,7 +165,7 @@ export default function NotificationsPage() {
                   <div className="flex-grow">
                     <p className="text-gray-800 leading-relaxed">
                       <span className="font-semibold text-gray-900">
-                        {notif.requester.generatedUsername}
+                        {notif.requester.username}
                       </span>{" "}
                       wants to connect about your post:{" "}
                       <span className="font-semibold text-blue-600">

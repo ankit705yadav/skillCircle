@@ -1,7 +1,8 @@
 "use client";
 
-import { useAuth } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
+import { useAuth } from "@/lib/contexts/AuthContext";
+import { claimUsername, generateUsernames } from "@/lib/supabase/queries";
 import {
   Modal,
   Box,
@@ -27,7 +28,7 @@ const style = {
 };
 
 export default function UsernameSelectionModal({ open }: { open: boolean }) {
-  const { getToken } = useAuth();
+  const { refreshProfile } = useAuth();
   const [usernames, setUsernames] = useState<string[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -39,27 +40,17 @@ export default function UsernameSelectionModal({ open }: { open: boolean }) {
     const fetchUsernames = async () => {
       setIsLoading(true);
       setError(null);
-      const token = await getToken();
       try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/users/generate-usernames`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          },
-        );
-        if (!response.ok) throw new Error("Failed to fetch usernames");
-        const data = await response.json();
-        setUsernames(data);
-      } catch (err) {
+        setUsernames(await generateUsernames());
+      } catch {
         setError("Could not load username options. Please refresh.");
-        // console.error("OO:", err);
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchUsernames();
-  }, [open, getToken]);
+  }, [open]);
 
   const handleClaimUsername = async () => {
     if (!selected) return;
@@ -67,26 +58,9 @@ export default function UsernameSelectionModal({ open }: { open: boolean }) {
     setError(null);
 
     try {
-      const token = await getToken();
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/users/claim-username`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ username: selected }),
-        },
-      );
-
-      if (!response.ok) {
-        const message = await response.text();
-        throw new Error(message || "That username might have just been taken.");
-      }
-
-      // Success! Reload the page to exit the setup flow.
-      window.location.reload();
+      await claimUsername(selected);
+      // The profile now has a username, which closes the setup flow.
+      await refreshProfile();
     } catch (err: any) {
       setError(err.message);
     } finally {

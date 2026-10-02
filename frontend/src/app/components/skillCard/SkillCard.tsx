@@ -1,30 +1,6 @@
-interface Skill {
-  id: number;
-  title: string;
-  description: string;
-  type: "OFFER" | "ASK";
-  posterImageUrl?: string;
-  author: {
-    clerkUserId: string;
-    username: string;
-  };
-}
+import type { SkillPost } from "@/lib/supabase/queries";
 
-interface User {
-  id: string;
-}
-
-interface SkillCardProps {
-  skill: Skill;
-  user: User | null | undefined;
-  handleRequestConnection: (skillId: number) => void;
-}
-
-export default function SkillCard({
-  skill,
-  user,
-  handleRequestConnection,
-}: SkillCardProps) {
+export default function SkillCard({ skill }: { skill: SkillPost }) {
   return (
     <div
       className="group relative bg-white rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-shadow duration-300 border border-gray-200 h-full flex flex-col"

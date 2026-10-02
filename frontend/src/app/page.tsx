@@ -1,64 +1,44 @@
 "use client";
 
-import { useAuth, useUser } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 import NearbySkills from "./components/NearbySkills";
 import StatsShowcase from "./components/statsShowcase/StatsShowcase";
-
-interface Skill {
-  id: number;
-  title: string;
-  description: string;
-  type: "OFFER" | "ASK";
-  author: {
-    username: string;
-  };
-}
+import { useAuth } from "@/lib/contexts/AuthContext";
+import { fetchNearbyPosts, type SkillPost } from "@/lib/supabase/queries";
 
 export default function Home() {
-  const { getToken } = useAuth();
-  const { user, isLoaded, isSignedIn } = useUser();
-  const [skills, setSkills] = useState<Skill[]>([]);
+  const { user } = useAuth();
+  const userId = user?.id;
+  const [skills, setSkills] = useState<SkillPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // The data fetching logic now lives in the parent component
-  const fetchSkills = async () => {
-    if (!isLoaded || !isSignedIn) return;
+  // Fetch nearby skills once the user is signed in
+  useEffect(() => {
+    if (!userId) return;
 
     setIsLoading(true);
-    navigator.geolocation.getCurrentPosition(async (position) => {
-      const { latitude, longitude } = position.coords;
-      const token = await getToken();
-      if (!token) {
-        setIsLoading(false);
-        return;
-      }
-
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/skills/nearby?lat=${latitude}&lon=${longitude}`,
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        setSkills(data);
-      }
-      setIsLoading(false);
-    });
-  };
-
-  // Fetch skills when the component initially loads
-  useEffect(() => {
-    fetchSkills();
-  }, [isLoaded, isSignedIn]); // Dependency on auth state
+    navigator.geolocation.getCurrentPosition(
+      async ({ coords }) => {
+        try {
+          setSkills(await fetchNearbyPosts(coords.latitude, coords.longitude));
+        } catch (error: any) {
+          toast.error(error.message);
+        } finally {
+          setIsLoading(false);
+        }
+      },
+      () => setIsLoading(false),
+    );
+  }, [userId]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       <StatsShowcase />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <NearbySkills skills={skills} isLoading={isLoading} user={user} />
+        <NearbySkills skills={skills} isLoading={isLoading} />
       </div>
     </div>
   );

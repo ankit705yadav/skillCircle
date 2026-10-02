@@ -1,12 +1,21 @@
 "use client";
 
-import { SignedIn, SignedOut, UserButton, SignInButton } from "@clerk/nextjs";
 import Link from "next/link";
-import { Bell, MessageSquare, Star, PlusCircle } from "lucide-react";
-import { useWebSocket } from "@/lib/contexts/WebSocketContext";
+import { useRouter } from "next/navigation";
+import { Bell, MessageSquare, Star, PlusCircle, LogOut } from "lucide-react";
+import { useAuth } from "@/lib/contexts/AuthContext";
+import { useRealtime } from "@/lib/contexts/RealtimeContext";
 
 export default function Header() {
-  const { unreadCount, unreadMessagesCount } = useWebSocket();
+  const { user, profile, signOut } = useAuth();
+  const { unreadCount, unreadMessagesCount } = useRealtime();
+  const router = useRouter();
+
+  const handleSignOut = async () => {
+    await signOut();
+    router.push("/");
+  };
+
   return (
     <header className="flex items-center justify-between bg-white border border-gray-200 rounded-xl shadow-md px-6 py-3 mb-6 mt-4">
       {/* Logo */}
@@ -64,16 +73,29 @@ export default function Header() {
 
       {/* Auth */}
       <div>
-        <SignedOut>
-          <SignInButton mode="modal">
-            <button className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg text-sm font-medium shadow transition">
-              Sign In
+        {user ? (
+          <div className="flex items-center gap-3">
+            {profile?.username && (
+              <span className="text-sm font-medium text-gray-700">
+                {profile.username}
+              </span>
+            )}
+            <button
+              onClick={handleSignOut}
+              className="flex items-center gap-1 text-sm text-gray-600 hover:text-red-600 transition"
+            >
+              <LogOut className="w-4 h-4" />
+              <span className="hidden sm:inline">Sign Out</span>
             </button>
-          </SignInButton>
-        </SignedOut>
-        <SignedIn>
-          <UserButton afterSignOutUrl="/" />
-        </SignedIn>
+          </div>
+        ) : (
+          <Link
+            href="/sign-in"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg text-sm font-medium shadow transition"
+          >
+            Sign In
+          </Link>
+        )}
       </div>
     </header>
   );

@@ -2,14 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Users, Link, Zap, FileText, Pin } from "lucide-react"; // lucide icons
-
-interface AppStats {
-  totalUsers: number;
-  totalConnections: number;
-  activeConnections: number;
-  totalPosts: number;
-  activePosts: number;
-}
+import { fetchStats, type AppStats } from "@/lib/supabase/queries";
 
 const StatCard = ({
   icon,
@@ -37,22 +30,16 @@ export default function StatsShowcase() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchStats = async () => {
+    const loadStats = async () => {
       try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/stats`,
-        );
-        if (response.ok) {
-          const data = await response.json();
-          setStats(data);
-        }
+        setStats(await fetchStats());
       } catch (error) {
         console.error("Failed to fetch stats:", error);
       } finally {
         setIsLoading(false);
       }
     };
-    fetchStats();
+    loadStats();
   }, []);
 
   if (isLoading) {

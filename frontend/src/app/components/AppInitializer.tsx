@@ -1,6 +1,6 @@
 "use client";
 
-import { useUserSetup } from "@/lib/hooks/useUserSetup";
+import { useAuth } from "@/lib/contexts/AuthContext";
 import UsernameSelectionModal from "./UsernameSelectionModal";
 import { Box, CircularProgress } from "@mui/material";
 
@@ -9,9 +9,9 @@ export default function AppInitializer({
 }: {
   children: React.ReactNode;
 }) {
-  const { isSetupRequired, isLoading } = useUserSetup();
+  const { user, profile, isLoaded } = useAuth();
 
-  if (isLoading) {
+  if (!isLoaded) {
     return (
       <Box
         sx={{
@@ -25,6 +25,9 @@ export default function AppInitializer({
       </Box>
     );
   }
+
+  // Signed-in users must claim a generated username before using the app.
+  const isSetupRequired = !!user && !profile?.username;
 
   return (
     <>

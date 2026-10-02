@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import * as nsfwjs from "nsfwjs";
-import { useAuth } from "@clerk/nextjs";
+import { getImageKitAuth } from "@/lib/supabase/queries";
 import { Upload, Image as ImageIcon, CheckCircle, Loader2, X } from "lucide-react";
 
 interface ImageUploadProps {
@@ -27,7 +27,6 @@ const loadImage = (src: string): Promise<HTMLImageElement> =>
   });
 
 export default function ImageUpload({ onUploadSuccess }: ImageUploadProps) {
-  const { getToken } = useAuth();
   const [status, setStatus] = useState<
     "idle" | "moderating" | "uploading" | "success"
   >("idle");
@@ -38,18 +37,6 @@ export default function ImageUpload({ onUploadSuccess }: ImageUploadProps) {
   useEffect(() => {
     loadModel();
   }, []);
-
-  const authenticator = async () => {
-    const token = await getToken();
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/imagekit/auth`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      },
-    );
-    if (!response.ok) throw new Error("Authentication failed");
-    return response.json();
-  };
 
   const handleFileSelect = async (evt: React.ChangeEvent<HTMLInputElement>) => {
     const f = evt.target.files?.[0];
@@ -95,7 +82,7 @@ export default function ImageUpload({ onUploadSuccess }: ImageUploadProps) {
 
     setStatus("uploading");
     try {
-      const auth = await authenticator();
+      const auth = await getImageKitAuth();
       const formData = new FormData();
       formData.append("file", file);
       formData.append("fileName", "poster.jpg");
@@ -104,7 +91,7 @@ export default function ImageUpload({ onUploadSuccess }: ImageUploadProps) {
         process.env.NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY!,
       );
       formData.append("signature", auth.signature);
-      formData.append("expire", auth.expire);
+      formData.append("expire", String(auth.expire));
       formData.append("token", auth.token);
 
       const res = await fetch(

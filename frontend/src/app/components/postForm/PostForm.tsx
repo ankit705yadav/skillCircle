@@ -1,12 +1,15 @@
 "use client";
 
-import { useAuth } from "@clerk/nextjs";
 import { useState } from "react";
 import { toast } from "sonner";
 import ImageUpload from "../imageUpload/ImageUpload";
+import { createPost } from "@/lib/supabase/queries";
 
-export default function CreateOfferForm({ onPostSuccess }) {
-  const { getToken } = useAuth();
+export default function CreateOfferForm({
+  onPostSuccess,
+}: {
+  onPostSuccess: () => void;
+}) {
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -23,28 +26,8 @@ export default function CreateOfferForm({ onPostSuccess }) {
     setError(null);
 
     try {
-      const token = await getToken();
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/skills`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            title,
-            description,
-            posterImageUrl,
-            type,
-          }),
-        },
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "An error occurred on the server.");
-      }
+      // Moderated server-side by the create-post edge function
+      await createPost({ title, description, posterImageUrl, type });
 
       toast.success(`${type === "OFFER" ? "Offer" : "Request"} created successfully!`);
       setTitle("");

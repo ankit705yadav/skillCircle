@@ -1,6 +1,5 @@
 "use client";
 
-import { useAuth, useUser } from "@clerk/nextjs";
 import { useParams } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
 import {
@@ -18,23 +17,35 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { useWebSocket } from "@/lib/contexts/WebSocketContext";
+import { useAuth } from "@/lib/contexts/AuthContext";
+import { useRealtime } from "@/lib/contexts/RealtimeContext";
+import {
+  fetchActiveConnections,
+  fetchMessages,
+  sendMessage,
+  type Author,
+  type Connection,
+  type Message,
+} from "@/lib/supabase/queries";
+
+const byTimestamp = (a: Message, b: Message) =>
+  new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
 
 export default function ChatPage() {
-  const { getToken } = useAuth();
-  const { user } = useUser();
+  const { user } = useAuth();
   const router = useRouter();
   const params = useParams();
   const otherUserId = decodeURIComponent(params.userId as string);
-  const [messages, setMessages] = useState<any[]>([]);
-  const [userConnections, setUserConnections] = useState<any[]>([]);
-  const [otherUserInfo, setOtherUserInfo] = useState<any>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  // Connections with this user, most recently accepted first.
+  const [userConnections, setUserConnections] = useState<Connection[]>([]);
+  const [otherUserInfo, setOtherUserInfo] = useState<Author | null>(null);
   const [newMessage, setNewMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [isSkillsExpanded, setIsSkillsExpanded] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { subscribeToConnection, isConnected } = useWebSocket();
+  const { subscribeToConnection, isConnected } = useRealtime();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -45,73 +56,31 @@ export default function ChatPage() {
   }, [messages]);
 
   useEffect(() => {
-    if (!otherUserId) return;
+    if (!otherUserId || !user) return;
 
     const fetchData = async () => {
-      const token = await getToken();
       try {
-        // Fetch all connections
-        const connectionsResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/connections/active`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          },
+        // All of my active connections, newest first; keep the ones with this user
+        const connectionsWithUser = (await fetchActiveConnections()).filter(
+          (conn) =>
+            (user.id === conn.requester.id ? conn.approver : conn.requester)
+              .id === otherUserId,
         );
 
-        if (connectionsResponse.ok) {
-          const allConnections = await connectionsResponse.json();
+        setUserConnections(connectionsWithUser);
 
-          // Filter connections with the specific user
-          const connectionsWithUser = allConnections.filter((conn: any) => {
-            const otherUser =
-              user?.id === conn.requester.clerkUserId
-                ? conn.approver
-                : conn.requester;
-            return otherUser.clerkUserId === otherUserId;
-          });
+        if (connectionsWithUser.length > 0) {
+          const firstConn = connectionsWithUser[0];
+          setOtherUserInfo(
+            user.id === firstConn.requester.id
+              ? firstConn.approver
+              : firstConn.requester,
+          );
 
-          setUserConnections(connectionsWithUser);
-
-          if (connectionsWithUser.length > 0) {
-            // Set other user info from first connection
-            const firstConn = connectionsWithUser[0];
-            const otherUser =
-              user?.id === firstConn.requester.clerkUserId
-                ? firstConn.approver
-                : firstConn.requester;
-            setOtherUserInfo(otherUser);
-
-            // Fetch messages from all connections with this user
-            const allMessages: any[] = [];
-
-            for (const conn of connectionsWithUser) {
-              const messagesResponse = await fetch(
-                `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/connections/${conn.id}/messages`,
-                {
-                  headers: { Authorization: `Bearer ${token}` },
-                },
-              );
-              if (messagesResponse.ok) {
-                const msgs = await messagesResponse.json();
-                // Tag each message with its connection info for display
-                const taggedMsgs = msgs.map((msg: any) => ({
-                  ...msg,
-                  connectionId: conn.id,
-                  skillPost: conn.skillPost,
-                }));
-                allMessages.push(...taggedMsgs);
-              }
-            }
-
-            // Sort all messages by timestamp
-            allMessages.sort(
-              (a, b) =>
-                new Date(a.timestamp).getTime() -
-                new Date(b.timestamp).getTime(),
-            );
-
-            setMessages(allMessages);
-          }
+          // Messages from all connections with this user, in one timeline
+          setMessages(
+            await fetchMessages(connectionsWithUser.map((conn) => conn.id)),
+          );
         }
       } catch (error) {
         console.error("Failed to fetch data:", error);
@@ -122,50 +91,25 @@ export default function ChatPage() {
     };
 
     fetchData();
-  }, [otherUserId, getToken, user?.id]);
+  }, [otherUserId, user]);
 
-  // Subscribe to real-time messages for all connections with this user
+  // Receive real-time messages for all connections with this user
   useEffect(() => {
-    if (userConnections.length === 0 || !isConnected) return;
-
-    const unsubscribes: (() => void)[] = [];
-
-    userConnections.forEach((conn) => {
-      const unsubscribe = subscribeToConnection(
-        Number(conn.id),
-        (newMessage) => {
-          setMessages((prev) => {
-            // Check if message already exists to avoid duplicates
-            if (prev.some((m) => m.id === newMessage.id)) {
-              return prev;
-            }
-            // Only add if it's from the other person (not us)
-            if (newMessage.sender.clerkUserId !== user?.id) {
-              // Tag the message with connection info
-              const taggedMessage = {
-                ...newMessage,
-                connectionId: conn.id,
-                skillPost: conn.skillPost,
-              };
-              // Insert in correct chronological order
-              const newMessages = [...prev, taggedMessage].sort(
-                (a, b) =>
-                  new Date(a.timestamp).getTime() -
-                  new Date(b.timestamp).getTime(),
-              );
-              return newMessages;
-            }
-            return prev;
-          });
-        },
-      );
-      unsubscribes.push(unsubscribe);
-    });
+    const unsubscribes = userConnections.map((conn) =>
+      subscribeToConnection(conn.id, (newMessage) => {
+        setMessages((prev) =>
+          // Check if message already exists to avoid duplicates
+          prev.some((m) => m.id === newMessage.id)
+            ? prev
+            : [...prev, newMessage].sort(byTimestamp),
+        );
+      }),
+    );
 
     return () => {
       unsubscribes.forEach((unsub) => unsub());
     };
-  }, [userConnections, isConnected, subscribeToConnection, user?.id]);
+  }, [userConnections, subscribeToConnection]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -179,35 +123,10 @@ export default function ChatPage() {
     const primaryConnection = userConnections[0];
 
     try {
-      const token = await getToken();
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/connections/${primaryConnection.id}/messages`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ content: messageContent }),
-        },
-      );
-
-      if (response.ok) {
-        const newMsg = await response.json();
-        // Tag the message with connection info
-        const taggedMessage = {
-          ...newMsg,
-          connectionId: primaryConnection.id,
-          skillPost: primaryConnection.skillPost,
-        };
-        setMessages((prev) => [...prev, taggedMessage]);
-      } else {
-        toast.error("Failed to send message");
-        setNewMessage(messageContent); // Restore the message
-      }
-    } catch (error) {
-      console.error("Failed to send message:", error);
-      toast.error("Failed to send message");
+      const newMsg = await sendMessage(primaryConnection.id, messageContent);
+      setMessages((prev) => [...prev, newMsg]);
+    } catch (error: any) {
+      toast.error(error.message);
       setNewMessage(messageContent); // Restore the message
     } finally {
       setIsSending(false);
@@ -293,16 +212,11 @@ export default function ChatPage() {
                     )}
                   </div>
                   <div className="space-y-2">
-                    {/* Sort connections by acceptedAt to show latest first */}
+                    {/* Connections are already sorted latest first */}
                     {(() => {
-                      const sortedConnections = [...userConnections].sort(
-                        (a, b) =>
-                          new Date(b.acceptedAt).getTime() -
-                          new Date(a.acceptedAt).getTime(),
-                      );
                       const connectionsToShow = isSkillsExpanded
-                        ? sortedConnections
-                        : [sortedConnections[0]];
+                        ? userConnections
+                        : [userConnections[0]];
 
                       return connectionsToShow.map((conn) => (
                         <div
@@ -370,7 +284,7 @@ export default function ChatPage() {
             </div>
           ) : (
             messages.map((msg) => {
-              const isMyMessage = user?.id === msg.sender.clerkUserId;
+              const isMyMessage = user?.id === msg.sender.id;
               return (
                 <div
                   key={msg.id}
@@ -385,7 +299,7 @@ export default function ChatPage() {
                   >
                     {!isMyMessage && (
                       <p className="text-xs font-semibold mb-1 text-gray-600">
-                        {msg.sender.generatedUsername}
+                        {otherUserInfo?.username}
                       </p>
                     )}
                     <p className="text-sm break-words">{msg.content}</p>
